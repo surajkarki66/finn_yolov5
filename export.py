@@ -47,7 +47,6 @@ from utils.datasets import LoadImages
 from utils.general import colorstr, check_dataset, check_img_size, check_requirements, file_size, print_args, \
     set_logging, url2file
 from utils.torch_utils import select_device
-
 import brevitas.onnx as bo
 
 def prepare_cfg_for_export(cfg):
@@ -66,18 +65,17 @@ def save_scale_params(model, file):
     scale = model.model[-1].hard_quant.quant_output_scale()
     np.save(f, scale)
     
-    
-def export_finn_onnx(model, im, file, prefix=colorstr('FinnOnnx:')):
+def export_qonnx(model, im, file, prefix=colorstr('Qonnx:')):
     try:
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
-        f = file.with_suffix('.finn.onnx')
+        f = file.with_suffix('.qonnx.onnx')
         input_shape = list(im.numpy().shape)
-        bo.export_qonnx(module=model,
+        bo.export_qonnx(model,
                             input_shape=input_shape,
                             export_path=f,
                             input_t=None)
-        # TODO: Fix error: has no quant_output_scale method
-        #save_scale_params(model, file)
+        
+        save_scale_params(model, file)
         
     except Exception as e:
         print(f'{prefix} export failure: {e}')
@@ -312,7 +310,7 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     device = select_device(device)
     assert not (device.type == 'cpu' and half), '--half only compatible with GPU export, i.e. use --device 0'
     
-    if 'finn_onnx' in include:
+    if 'qonnx' in include:
         cfg = weights.replace("weights/best.pt", "model.yaml")
         prepare_cfg_for_export(cfg)
     
@@ -352,8 +350,8 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
         export_onnx(model, im, file, opset, train, dynamic, simplify)
     if 'coreml' in include:
         export_coreml(model, im, file)
-    if 'finn_onnx' in include:
-        export_finn_onnx(model, im, file)
+    if 'qonnx' in include:
+        export_qonnx(model, im, file)
 
     # TensorFlow Exports
     if any(tf_exports):
@@ -395,7 +393,7 @@ def parse_opt():
     parser.add_argument('--iou-thres', type=float, default=0.45, help='TF.js NMS: IoU threshold')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='TF.js NMS: confidence threshold')
     parser.add_argument('--include', nargs='+',
-                        default=['finn_onnx'],
+                        default=['qonnx'],
                         help='available formats are (torchscript, onnx, coreml, saved_model, pb, tflite, tfjs)')
     parser.add_argument('--nodetect', action='store_true', help='remove last(detect) layer')
     opt = parser.parse_args()
