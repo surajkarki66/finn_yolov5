@@ -72,11 +72,13 @@ def export_finn_onnx(model, im, file, prefix=colorstr('FinnOnnx:')):
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.finn.onnx')
         input_shape = list(im.numpy().shape)
-        bo.export_finn_onnx(module=model,
+        bo.export_qonnx(module=model,
                             input_shape=input_shape,
                             export_path=f,
                             input_t=None)
-        save_scale_params(model, file)
+        # TODO: Fix error: has no quant_output_scale method
+        #save_scale_params(model, file)
+        
     except Exception as e:
         print(f'{prefix} export failure: {e}')
     
