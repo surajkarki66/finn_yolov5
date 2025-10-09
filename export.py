@@ -341,7 +341,13 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     
     # Remove detect layer
     if nodetect:
-        model.model = nn.Sequential(*[model.model[i] for i in range(15)])
+        model_type = opt.get('model_type')
+        if model_type in ['yolov1', 'yolov1-tiny']:
+            model.model = nn.Sequential(*[model.model[i] for i in range(15)])
+        else:
+            for m in model.modules():
+                if isinstance(m, Detect):
+                    m.finn_export = True
     
     # Exports
     if 'torchscript' in include:
@@ -396,6 +402,13 @@ def parse_opt():
                         default=['qonnx'],
                         help='available formats are (torchscript, onnx, coreml, saved_model, pb, tflite, tfjs)')
     parser.add_argument('--nodetect', action='store_true', help='remove last(detect) layer')
+    parser.add_argument(
+        '--model-type',
+        type=str,
+        default='yolov1',
+        choices=['yolov1', 'yolov1-tiny', 'yolov3', 'yolov3-tiny', 'yolov5'],
+        help='model type for export: yolov1, yolov1-tiny, yolov3, yolov3-tiny, or yolov5'
+    )
     opt = parser.parse_args()
     print_args(FILE.stem, opt)
     return opt
