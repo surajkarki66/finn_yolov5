@@ -7,9 +7,7 @@ anchors:
   - [10,14, 23,27, 37,58]  # P4/16
 
 bit_width: 
- # - [8, 4, 4, 4, 4]  # in_weight_bit_width, in_act_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
-# - [8, 4, 2, 8]  # in_weight_bit_width,  weight_bit_width, act_bit_width, out_weight_bit_width
-- [8, 4, 4, 8]  # 
+  - [8, 4, 4, 8]  # in_weight_bit_width,  weight_bit_width, act_bit_width, out_weight_bit_width
 
 # YOLOv3-tiny backbone
 backbone:
