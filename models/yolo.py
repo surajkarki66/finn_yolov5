@@ -37,6 +37,7 @@ LOGGER = logging.getLogger(__name__)
 class Detect(nn.Module):
     stride = None  # strides computed during build
     onnx_dynamic = False  # ONNX export parameter
+    finn_export = False   # Added finn_export flag
 
     def __init__(self, nc=80, anchors=(), ch=(), in_conv=True, use_hardtanh=False, inplace=True, weight_bit_width=None):  # detection layer
         super().__init__()
@@ -68,34 +69,39 @@ class Detect(nn.Module):
             if self.in_conv:
                 x[i] = self.m[i](x[i])  # conv
             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
-            x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+            
+            # Skip reshape if finn_export is True
+            if not self.finn_export:
+                x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
 
-            if not self.training:  # inference
-                if self.grid[i].shape[2:4] != x[i].shape[2:4] or self.onnx_dynamic:
-                    self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
-                y = x[i]
-                if self.use_hardtanh:
-                    y[..., 4:] = y[..., 4:] #/ 2 + 0.5
-                else:
-                    y = y.sigmoid()
-                if self.inplace:
-                    if not self.use_hardtanh:
-                        y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + self.grid[i]) * self.stride[i]  # xy
-                        y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+                if not self.training:  # inference
+                    if self.grid[i].shape[2:4] != x[i].shape[2:4] or self.onnx_dynamic:
+                        self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
+                    y = x[i]
+                    if self.use_hardtanh:
+                        y[..., 4:] = y[..., 4:]
                     else:
-                        y[..., 0:2] = (y[..., 0:2] + 1.0 - 0.5 + self.grid[i]) * self.stride[i]  # xy
-                        y[..., 2:4] = (y[..., 2:4] + 1.0) ** 2 * self.anchor_grid[i]  # wh
-                    
-                else:  # for YOLOv5 on AWS Inferentia https://github.com/ultralytics/yolov5/pull/2953
-                    if not self.use_hardtanh:
-                        xy = (y[..., 0:2] * 2. - 0.5 + self.grid[i]) * self.stride[i]  # xy
-                        wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+                        y = y.sigmoid()
+                    if self.inplace:
+                        if not self.use_hardtanh:
+                            y[..., 0:2] = (y[..., 0:2] * 2. - 0.5 + self.grid[i]) * self.stride[i]  # xy
+                            y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+                        else:
+                            y[..., 0:2] = (y[..., 0:2] + 1.0 - 0.5 + self.grid[i]) * self.stride[i]  # xy
+                            y[..., 2:4] = (y[..., 2:4] + 1.0) ** 2 * self.anchor_grid[i]  # wh
                     else:
-                        xy = (y[..., 0:2] + 1.0 - 0.5 + self.grid[i]) * self.stride[i]  # xy
-                        wh = (y[..., 2:4] + 1.0) ** 2 * self.anchor_grid[i]  # wh
-                    y = torch.cat((xy, wh, y[..., 4:]), -1)
-                z.append(y.view(bs, -1, self.no))
+                        if not self.use_hardtanh:
+                            xy = (y[..., 0:2] * 2. - 0.5 + self.grid[i]) * self.stride[i]  # xy
+                            wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
+                        else:
+                            xy = (y[..., 0:2] + 1.0 - 0.5 + self.grid[i]) * self.stride[i]  # xy
+                            wh = (y[..., 2:4] + 1.0) ** 2 * self.anchor_grid[i]  # wh
+                        y = torch.cat((xy, wh, y[..., 4:]), -1)
+                    z.append(y.view(bs, -1, self.no))
 
+        # Return based on finn_export flag
+        if self.training or self.finn_export:
+            return x
         return x if self.training else (torch.cat(z, 1), x)
 
     def _make_grid(self, nx=20, ny=20, i=0):
