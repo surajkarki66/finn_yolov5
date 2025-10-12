@@ -15,6 +15,8 @@ from threading import Thread
 
 import numpy as np
 import torch
+
+from thop import profile
 from tqdm import tqdm
 
 FILE = Path(__file__).resolve()
@@ -239,6 +241,34 @@ def run(data,
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
         nt = torch.zeros(1)
+        
+    t = tuple(x / seen * 1E3 for x in dt)
+    try:
+        from thop import profile
+        dummy_input = torch.randn(1, 3, imgsz, imgsz).to(device)
+        macs, _ = profile(model, inputs=(dummy_input,), verbose=False)
+    except Exception as e:
+        print(f"Failed to compute MACs: {e}")
+        macs = -1
+
+    metrics_dict = {
+        "precision": float(mp),
+        "recall": float(mr),
+        "mAP@0.5": float(map50),
+        "mAP@0.5:0.95": float(map),
+        "speed_ms_inference": float(t[0]),
+        "speed_ms_nms": float(t[1]),
+        "speed_ms_total": float(t[2]),
+        "number_of_macs": float(macs),
+        "image_size": (imgsz, imgsz),
+        "batch_size": batch_size,
+        "per_class_map": {names[c]: float(ap[i]) for i, c in enumerate(ap_class)}
+    }
+
+    metrics_json_path = save_dir / "test_metrics.json"
+    with open(metrics_json_path, "w") as f:
+        json.dump(metrics_dict, f, indent=4)
+    print(f"Test metrics saved to {metrics_json_path}")
 
     # Print results
     pf = '%20s' + '%11i' * 2 + '%11.3g' * 4  # print format
