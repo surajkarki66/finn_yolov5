@@ -52,10 +52,12 @@ import brevitas.onnx as bo
 def prepare_cfg_for_export(cfg, use_hardtanh):
     with open(cfg, errors='ignore') as f:
         model_definition = yaml.safe_load(f)  # load model dict
-    
-    if use_hardtanh:
-        if "use_hardtanh" in model_definition.keys():
+        
+    if "use_hardtanh" in model_definition.keys():
+        if use_hardtanh:
             model_definition["use_hardtanh"] = True
+        else:
+            model_definition["use_hardtanh"] = False
 
     with open(cfg, 'w') as f:
         yaml.safe_dump(model_definition, f, sort_keys=False)
@@ -66,7 +68,7 @@ def save_scale_params(model, file):
     scale = model.model[-1].hard_quant.quant_output_scale()
     np.save(f, scale)
     
-def export_qonnx(model, im, file, model_type, prefix=colorstr('Qonnx:')):
+def export_qonnx(model, im, file, model_type, use_hardtanh, prefix=colorstr('Qonnx:')):
     try:
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.qonnx.onnx')
@@ -75,7 +77,7 @@ def export_qonnx(model, im, file, model_type, prefix=colorstr('Qonnx:')):
                             input_shape=input_shape,
                             export_path=f,
                             input_t=None)
-        if model_type == 'yolov1-tiny':
+        if model_type == 'yolov1-tiny' and use_hardtanh:
            save_scale_params(model, file)
 
     except Exception as e:
@@ -358,7 +360,7 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     if 'coreml' in include:
         export_coreml(model, im, file)
     if 'qonnx' in include:
-        export_qonnx(model, im, file, model_type)
+        export_qonnx(model, im, file, model_type, use_hardtanh)
 
     # TensorFlow Exports
     if any(tf_exports):
