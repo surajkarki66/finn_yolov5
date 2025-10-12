@@ -49,12 +49,13 @@ from utils.general import colorstr, check_dataset, check_img_size, check_require
 from utils.torch_utils import select_device
 import brevitas.onnx as bo
 
-def prepare_cfg_for_export(cfg):
+def prepare_cfg_for_export(cfg, use_hardtanh):
     with open(cfg, errors='ignore') as f:
         model_definition = yaml.safe_load(f)  # load model dict
     
-    if "use_hardtanh" in model_definition.keys():
-        model_definition["use_hardtanh"] = True
+    if use_hardtanh:
+        if "use_hardtanh" in model_definition.keys():
+            model_definition["use_hardtanh"] = True
 
     with open(cfg, 'w') as f:
         yaml.safe_dump(model_definition, f, sort_keys=False)
@@ -65,7 +66,7 @@ def save_scale_params(model, file):
     scale = model.model[-1].hard_quant.quant_output_scale()
     np.save(f, scale)
     
-def export_qonnx(model, im, file, prefix=colorstr('Qonnx:')):
+def export_qonnx(model, im, file, model_type, prefix=colorstr('Qonnx:')):
     try:
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.qonnx.onnx')
@@ -74,9 +75,9 @@ def export_qonnx(model, im, file, prefix=colorstr('Qonnx:')):
                             input_shape=input_shape,
                             export_path=f,
                             input_t=None)
-        
-        save_scale_params(model, file)
-        
+        if model_type == 'yolov1-tiny':
+           save_scale_params(model, file)
+
     except Exception as e:
         print(f'{prefix} export failure: {e}')
     
@@ -298,7 +299,9 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
         topk_all=100,  # TF.js NMS: topk for all classes to keep
         iou_thres=0.45,  # TF.js NMS: IoU threshold
         conf_thres=0.25,  # TF.js NMS: confidence threshold
-        nodetect=False  # Remove last layer
+        nodetect=False,  # Remove last layer,
+        model_type='yolov1',
+        use_hardtanh=True,  # Use HardTanh activation
         ):
     t = time.time()
     include = [x.lower() for x in include]
@@ -312,10 +315,9 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     
     if 'qonnx' in include:
         cfg = weights.replace("weights/best.pt", "model.yaml")
-        prepare_cfg_for_export(cfg)
+        prepare_cfg_for_export(cfg, use_hardtanh)
     
     model = attempt_load(weights, map_location=device, inplace=True, fuse=True)  # load FP32 model
-    nc, names = model.nc, model.names  # number of classes, class names
 
     # Input
     gs = int(max(model.stride))  # grid size (max stride)
@@ -341,8 +343,7 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     
     # Remove detect layer
     if nodetect:
-        model_type = opt.get('model_type')
-        if model_type in ['yolov1', 'yolov1-tiny']:
+        if model_type == 'yolov1-tiny':
             model.model = nn.Sequential(*[model.model[i] for i in range(15)])
         else:
             for m in model.modules():
@@ -357,7 +358,7 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     if 'coreml' in include:
         export_coreml(model, im, file)
     if 'qonnx' in include:
-        export_qonnx(model, im, file)
+        export_qonnx(model, im, file, model_type)
 
     # TensorFlow Exports
     if any(tf_exports):
@@ -405,9 +406,14 @@ def parse_opt():
     parser.add_argument(
         '--model-type',
         type=str,
-        default='yolov1',
-        choices=['yolov1', 'yolov1-tiny', 'yolov3', 'yolov3-tiny', 'yolov5'],
-        help='model type for export: yolov1, yolov1-tiny, yolov3, yolov3-tiny, or yolov5'
+        default='yolov1-tiny',
+        choices=['yolov1-tiny', 'yolov3', 'yolov3-tiny', 'yolov5'],
+        help='model type for export: yolov1-tiny, yolov3, yolov3-tiny, or yolov5'
+    )
+    parser.add_argument(
+        '--use-hardtanh',
+        action='store_true',
+        help='Use HardTanh activation'
     )
     opt = parser.parse_args()
     print_args(FILE.stem, opt)
