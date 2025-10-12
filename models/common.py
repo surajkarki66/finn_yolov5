@@ -9,7 +9,7 @@ import warnings
 from copy import copy
 from pathlib import Path
 
-import numpy as np
+import numpy as npf
 import pandas as pd
 import requests
 import torch
@@ -24,6 +24,7 @@ from utils.plots import Annotator, colors
 from utils.torch_utils import time_sync
 
 # Quant layer imports
+import brevitas as qnn
 from brevitas.nn import QuantConv2d, QuantLinear, QuantReLU, QuantSigmoid, QuantHardTanh, QuantIdentity
 try:
     from brevitas.nn import QuantAvgPool2d
@@ -32,7 +33,7 @@ except Exception as e:
 from brevitas.quant import IntBias, Int8ActPerTensorFloatMinMaxInit
 
 from .quant_common import CommonIntActQuant, CommonUintActQuant, CommonWeightQuant, CommonActQuant
-from .quant_common import CommonIntWeightPerChannelQuant, CommonIntWeightPerTensorQuant
+from .quant_common import CommonIntWeightPerChannelQuant, CommonIntWeightPerTensorQuant, RoundTo4bit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +43,6 @@ def autopad(k, p=None):  # kernel, padding
     if p is None:
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
     return p
-
 
 class Conv(nn.Module):
     # Standard convolution
@@ -81,7 +81,7 @@ class SimpleConv(nn.Module):
 class QuantSimpleConv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, weight_bit_width=4, 
-                 act_bit_width=2, use_hardtanh=False):  # ch_in, ch_out, kernel, stride, padding, groups
+                 act_bit_width=4, use_hardtanh=False):  # ch_in, ch_out, kernel, stride, padding, groups
         super().__init__()
         
         self.use_hardtanh = use_hardtanh
@@ -112,10 +112,28 @@ class QuantSimpleConv(nn.Module):
         return x
 
 
+
+class TruncAvgPool(nn.Module):
+    """
+    Quantized AvgPool2d variant that replaces the division step in the average with a right shift
+    to the target bit-width through a rounding or truncation quantizer.
+    Requires a QuantTensor as input and preserves the scale of the input in the output.
+    """
+
+    def __init__(self,k,s,q):
+        super().__init__()
+        self.trunc= QuantAvgPool2d(kernel_size = k, stride = s, trunc_quant= q)
+    def forward(self, x):
+        x = self.trunc(x)
+        return x
+
+
+
+
 class QuantConv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, use_act=True,
-                 use_bn=True, weight_bit_width=4, act_bit_width=2):  # ch_in, ch_out, kernel, stride, padding, groups
+                 use_bn=True, weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, kernel, stride, padding, groups
         super().__init__()
         self.use_act = use_act
         self.use_bn = use_bn
@@ -219,7 +237,7 @@ class Bottleneck(nn.Module):
 class QuantBottleneck(nn.Module):
     # Standard quantized bottleneck
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=2):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
+                 weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
@@ -267,7 +285,7 @@ class C3(nn.Module):
 class QuantC3(nn.Module):
     # Quantized CSP Bottleneck with 3 convolutions
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=2, use_hardtanh=False):  # ch_in, ch_out, number, shortcut, groups, expansion, weight bit, act bit
+                 weight_bit_width=4, act_bit_width=4, use_hardtanh=False):  # ch_in, ch_out, number, shortcut, groups, expansion, weight bit, act bit
         super().__init__()
         self.use_hardtanh = use_hardtanh
         c_ = int(c2 * e)  # hidden channels
@@ -322,7 +340,7 @@ class SPP(nn.Module):
         c_ = c1 // 2  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv(c_ * (len(k) + 1), c2, 1, 1)
-        self.m = nn.ModuleList([nn.MaxPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
+        self.m = nn.ModuleList([nn.AvgPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
 
     def forward(self, x):
         x = self.cv1(x)
@@ -338,7 +356,7 @@ class SPPF(nn.Module):
         c_ = c1 // 2  # hidden channels
         self.cv1 = Conv(c1, c_, 1, 1)
         self.cv2 = Conv(c_ * 4, c2, 1, 1)
-        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
+        self.m = nn.AvgPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
         x = self.cv1(x)
@@ -351,12 +369,12 @@ class SPPF(nn.Module):
 
 class QuantSPPF(nn.Module):
     # Quantized Spatial Pyramid Pooling - Fast (QuantSPPF) layer for YOLOv5 by Glenn Jocher
-    def __init__(self, c1, c2, k=5, weight_bit_width=4, act_bit_width=2):  # equivalent to SPP(k=(5, 9, 13))
+    def __init__(self, c1, c2, k=5, weight_bit_width=4, act_bit_width=4):  # equivalent to SPP(k=(5, 9, 13))
         super().__init__()
         c_ = c1 // 2  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_ * 4, c2, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
+        self.m = QuantAvgPool2d(kernel_size=k, stride=1)
 
     def forward(self, x):
         x = self.cv1(x)

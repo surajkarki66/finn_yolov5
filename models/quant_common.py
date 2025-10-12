@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 from dependencies import value
-
+from brevitas.quant.solver.trunc import TruncQuantSolver
 from brevitas.inject import ExtendedInjector
 from brevitas.quant.solver import WeightQuantSolver, ActQuantSolver
 from brevitas.core.bit_width import BitWidthImplType
@@ -100,3 +100,16 @@ class CommonUintActQuant(Uint8ActPerTensorFloatMaxInit):
     bit_width = None
     max_val = 6.0
     restrict_scaling_type = RestrictValueType.LOG_FP
+    
+class RoundTo4bit(TruncQuantSolver):
+    """
+    8-bit signed int truncator with rounding that preserves the input scale factor and zero-point.
+
+    Examples:
+        >>> from brevitas.nn import TruncAvgPool2d
+        >>> pool = TruncAvgPool2d(kernel_size=(3, 3), trunc_quant=RoundTo8bit)
+    """
+    bit_width = 4
+    quant_type = 'int'
+    bit_width_impl_type = 'const'
+    float_to_int_impl_type = 'round'
