@@ -6,8 +6,8 @@ This repo contains code for training Yolo(v1, v3, v5) architectures using differ
 ## Installation
 
 ```bash
-$ git clone git@github.com:sefaburakokcu/quantized-yolov5.git
-$ cd yolov5
+$ git clone https://github.com/surajkarki66/finn_yolov5.git
+$ cd finn_yolov5
 $ pip install -r requirements.txt
 ```
 
