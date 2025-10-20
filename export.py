@@ -30,6 +30,7 @@ import numpy as np
 from pathlib import Path
 
 import torch
+import brevitas.export as be
 import torch.nn as nn
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
@@ -47,7 +48,8 @@ from utils.datasets import LoadImages
 from utils.general import colorstr, check_dataset, check_img_size, check_requirements, file_size, print_args, \
     set_logging, url2file
 from utils.torch_utils import select_device
-import brevitas.onnx as bo
+
+
 
 def prepare_cfg_for_export(cfg, use_hardtanh):
     with open(cfg, errors='ignore') as f:
@@ -72,12 +74,8 @@ def export_qonnx(model, im, file, model_type, use_hardtanh, prefix=colorstr('Qon
     try:
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.qonnx.onnx')
-        input_shape = list(im.numpy().shape)
-        # Use actual input tensor for better shape inference
-        bo.export_qonnx(model,
-                            input_shape=input_shape,
-                            export_path=f,
-                            input_t=im)
+        input_shape = im.numpy().shape
+        be.export_qonnx(model, torch.rand(1, 3, input_shape[2], input_shape[3]), f)
         if model_type == 'yolov1-tiny' and use_hardtanh:
            save_scale_params(model, file)
 
@@ -338,11 +336,8 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
         elif isinstance(m, Detect):
             m.inplace = inplace
             m.onnx_dynamic = dynamic
-            # m.forward = m.forward_export  # assign forward (optional)
+            m.finn_export = True
 
-    for _ in range(2):
-        y = model(im)  # dry runs
-    print(f"\n{colorstr('PyTorch:')} starting from {file} ({file_size(file):.1f} MB)")
     
     # Remove detect layer
     if nodetect:
@@ -352,9 +347,6 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
             for m in model.modules():
                 if isinstance(m, Detect):
                     m.finn_export = True
-            # Run forward pass again to ensure model produces correct output shapes
-            for _ in range(2):
-                y = model(im)  # dry runs with finn_export=True
     
     # Exports
     if 'torchscript' in include:
