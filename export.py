@@ -73,10 +73,11 @@ def export_qonnx(model, im, file, model_type, use_hardtanh, prefix=colorstr('Qon
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.qonnx.onnx')
         input_shape = list(im.numpy().shape)
+        # Use actual input tensor for better shape inference
         bo.export_qonnx(model,
                             input_shape=input_shape,
                             export_path=f,
-                            input_t=None)
+                            input_t=im)
         if model_type == 'yolov1-tiny' and use_hardtanh:
            save_scale_params(model, file)
 
@@ -351,6 +352,9 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
             for m in model.modules():
                 if isinstance(m, Detect):
                     m.finn_export = True
+            # Run forward pass again to ensure model produces correct output shapes
+            for _ in range(2):
+                y = model(im)  # dry runs with finn_export=True
     
     # Exports
     if 'torchscript' in include:
