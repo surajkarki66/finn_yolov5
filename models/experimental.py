@@ -105,7 +105,7 @@ def attempt_load(weights, map_location=None, inplace=True, fuse=True):
             ema.load_state_dict(ckpt)
             ema.to(map_location)  # load
         if fuse:
-            model.append(ema.fuse().eval())  # FP32 model
+            model.append(ema.eval())  # FP32 model
         else:
             model.append(ema.eval())  # without layer fuse
 

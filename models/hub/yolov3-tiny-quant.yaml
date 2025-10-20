@@ -42,3 +42,4 @@ head:
 
    [[19, 15], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P4, P5)
   ]
+  
