@@ -646,8 +646,6 @@ def run(**kwargs):
 
 if __name__ == "__main__":
     opt = parse_opt()
-    
-    #opt.data = 'data/widerface.yaml'
     opt.noval = False
     opt.noautoanchor = True
     
