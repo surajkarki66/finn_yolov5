@@ -26,8 +26,7 @@ backbone:
    [-1, 1, QuantConv, [256, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 9-P5/32
    [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
-   [-1, 1, nn.ZeroPad2d, [[0, 1, 0, 1]]],  # 11
-   [-1, 1, nn.MaxPool2d, [2, 1, 0]],  # 12
+   [-1, 1, nn.MaxPool2d, [2, 1, 1]],  # 11 - FIXED: Removed ZeroPad2d, adjusted padding from 0 to 1
   ]
 
 # YOLOv3-tiny head
@@ -42,4 +41,3 @@ head:
 
    [[19, 15], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P4, P5)
   ]
-  
