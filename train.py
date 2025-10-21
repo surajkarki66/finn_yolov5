@@ -128,6 +128,8 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
         model.load_state_dict(csd, strict=False)  # load
         LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
+        # Ensure all buffers (including Brevitas quant buffers) are on the correct device
+        model = model.to(device)
     else:
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
 
@@ -178,23 +180,24 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     # Resume
     start_epoch, best_fitness = 0, 0.0
     if pretrained:
-        # Optimizer
-        if ckpt['optimizer'] is not None:
-            optimizer.load_state_dict(ckpt['optimizer'])
-            best_fitness = ckpt['best_fitness']
-
-        # EMA
-        if ema and ckpt.get('ema'):
-            ema.ema.load_state_dict(ckpt['ema'].float().state_dict(), strict=False)
-            ema.updates = ckpt['updates']
-
-        # Epochs
-        start_epoch = ckpt['epoch'] + 1
+        # Only load optimizer, EMA, and epoch state when resuming (not for transfer learning)
         if resume:
+            # Optimizer
+            if ckpt['optimizer'] is not None:
+                optimizer.load_state_dict(ckpt['optimizer'])
+                best_fitness = ckpt['best_fitness']
+
+            # EMA
+            if ema and ckpt.get('ema'):
+                ema.ema.load_state_dict(ckpt['ema'].float().state_dict(), strict=False)
+                ema.updates = ckpt['updates']
+
+            # Epochs
+            start_epoch = ckpt['epoch'] + 1
             assert start_epoch > 0, f'{weights} training to {epochs} epochs is finished, nothing to resume.'
-        if epochs < start_epoch:
-            LOGGER.info(f"{weights} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {epochs} more epochs.")
-            epochs += ckpt['epoch']  # finetune additional epochs
+            if epochs < start_epoch:
+                LOGGER.info(f"{weights} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {epochs} more epochs.")
+                epochs += ckpt['epoch']  # finetune additional epochs
 
         del ckpt, csd
 
@@ -275,6 +278,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     scaler = amp.GradScaler(enabled=cuda)
     stopper = EarlyStopping(patience=opt.patience)
     compute_loss = ComputeLoss(model)  # init loss class
+    epoch = start_epoch  # initialize epoch variable to prevent UnboundLocalError
     LOGGER.info(f'Image sizes {imgsz} train, {imgsz} val\n'
                 f'Using {train_loader.num_workers} dataloader workers\n'
                 f"Logging results to {colorstr('bold', save_dir)}\n"
@@ -642,8 +646,6 @@ def run(**kwargs):
 
 if __name__ == "__main__":
     opt = parse_opt()
-    
-    #opt.data = 'data/widerface.yaml'
     opt.noval = False
     opt.noautoanchor = True
     
