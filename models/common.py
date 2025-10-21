@@ -374,7 +374,9 @@ class QuantSPPF(nn.Module):
         c_ = c1 // 2  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_ * 4, c2, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        self.m = QuantAvgPool2d(kernel_size=k, stride=1)
+        # Use MaxPool2d instead of QuantAvgPool2d for FINN compatibility
+        # MaxPool2d with padding is supported by FINN and avoids the output size issue
+        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
         x = self.cv1(x)

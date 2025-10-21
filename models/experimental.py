@@ -102,7 +102,7 @@ def attempt_load(weights, map_location=None, inplace=True, fuse=True):
                 cfg = 'models/hub/yolov1-tiny-quant.yaml'
             
             ema = Model(cfg)
-            ema.load_state_dict(ckpt)
+            ema.load_state_dict(ckpt, strict=False)
             ema.to(map_location)  # load
         if fuse:
             model.append(ema.eval())  # FP32 model
