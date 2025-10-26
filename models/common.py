@@ -9,7 +9,6 @@ import warnings
 from copy import copy
 from pathlib import Path
 
-import numpy as npf
 import pandas as pd
 import requests
 import torch
@@ -24,16 +23,14 @@ from utils.plots import Annotator, colors
 from utils.torch_utils import time_sync
 
 # Quant layer imports
-import brevitas as qnn
-from brevitas.nn import QuantConv2d, QuantLinear, QuantReLU, QuantSigmoid, QuantHardTanh, QuantIdentity
+from brevitas.nn import QuantConv2d, QuantReLU, QuantHardTanh, QuantIdentity
 try:
     from brevitas.nn import QuantAvgPool2d
 except Exception as e:
     from brevitas.nn import TruncAvgPool2d as QuantAvgPool2d
-from brevitas.quant import IntBias, Int8ActPerTensorFloatMinMaxInit
 
-from .quant_common import CommonIntActQuant, CommonUintActQuant, CommonWeightQuant, CommonActQuant
-from .quant_common import CommonIntWeightPerChannelQuant, CommonIntWeightPerTensorQuant, RoundTo4bit
+from .quant_common import CommonUintActQuant, CommonWeightQuant, CommonActQuant
+from .quant_common import CommonIntWeightPerChannelQuant
 
 LOGGER = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import pkg_resources as pkg
 
-from matplotlib import pyplot as plt
 
 
 def clip_coords(boxes, shape):
