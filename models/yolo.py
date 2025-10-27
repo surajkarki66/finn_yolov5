@@ -51,7 +51,7 @@ class Detect(nn.Module):
         self.in_conv = in_conv
         self.use_hardtanh = use_hardtanh
         if weight_bit_width is not None:
-            self.m = nn.ModuleList(QuantConv2d(
+            self.m = nn.ModuleList(qnn.QuantConv2d(
                 in_channels=x,
                 out_channels=self.no * self.na,
                 kernel_size=1,
