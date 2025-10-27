@@ -29,9 +29,6 @@ try:
 except Exception as e:
     from brevitas.nn import TruncAvgPool2d as QuantAvgPool2d
 
-from brevitas.nn import QuantCat
-from brevitas.quant import Int8ActPerTensorFloat
-
 from .quant_common import CommonUintActQuant, CommonWeightQuant, CommonActQuant
 from .quant_common import CommonIntWeightPerChannelQuant
 
@@ -464,19 +461,6 @@ class Concat(nn.Module):
     def forward(self, x):
         return torch.cat(x, self.d)
 
-
-class QuantConcat(QuantCat):
-    def __init__(self, dimension=1, tie_input_output_quant=False, return_quant_tensor=True):
-        super().__init__(
-            input_quant=Int8ActPerTensorFloat,
-            output_quant=Int8ActPerTensorFloat,
-            tie_input_output_quant=tie_input_output_quant,
-            return_quant_tensor=return_quant_tensor
-        )
-        self.d = dimension
-    
-    def forward(self, x):
-        return super().forward(x, dim=self.d)
 
 
 class AutoShape(nn.Module):

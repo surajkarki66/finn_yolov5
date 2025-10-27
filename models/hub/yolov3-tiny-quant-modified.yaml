@@ -36,7 +36,7 @@ head:
    [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 14 (P5/32-large)
    [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, qnn.QuantUpsample, [None, 2, 'nearest', None, True]],  # size, scale_factor, mode, align_corners, return_quant_tensor
-   [[-1, 8], 1, QuantConcat, [1]], 
+   [[-1, 8], 1, Concat, [1]], 
    [-1, 1, QuantConv, [256, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 18 (P4/16-medium)
 
    [[18, 14], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P4, P5)

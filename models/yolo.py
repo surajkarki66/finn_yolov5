@@ -51,7 +51,7 @@ class Detect(nn.Module):
         self.in_conv = in_conv
         self.use_hardtanh = use_hardtanh
         if weight_bit_width is not None:
-            self.m = nn.ModuleList(QuantConv2d(
+            self.m = nn.ModuleList(qnn.QuantConv2d(
                 in_channels=x,
                 out_channels=self.no * self.na,
                 kernel_size=1,
@@ -319,8 +319,6 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
-            c2 = sum([ch[x] for x in f])
-        elif m is QuantConcat:
             c2 = sum([ch[x] for x in f])
         elif m is Detect:
             if len(args) == 4 or len(args) == 6:
