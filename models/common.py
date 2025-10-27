@@ -13,6 +13,7 @@ import pandas as pd
 import requests
 import torch
 import torch.nn as nn
+
 from PIL import Image
 from torch.cuda import amp
 
@@ -22,12 +23,14 @@ from utils.general import colorstr, increment_path, make_divisible, non_max_supp
 from utils.plots import Annotator, colors
 from utils.torch_utils import time_sync
 
-# Quant layer imports
-from brevitas.nn import QuantConv2d, QuantReLU, QuantHardTanh, QuantIdentity
+import brevitas.nn as qnn
 try:
     from brevitas.nn import QuantAvgPool2d
 except Exception as e:
     from brevitas.nn import TruncAvgPool2d as QuantAvgPool2d
+
+from brevitas.nn import QuantCat
+from brevitas.quant import Int8ActPerTensorFloat
 
 from .quant_common import CommonUintActQuant, CommonWeightQuant, CommonActQuant
 from .quant_common import CommonIntWeightPerChannelQuant
@@ -86,7 +89,7 @@ class QuantSimpleConv(nn.Module):
             weight_quant = CommonWeightQuant
         else:
             weight_quant = CommonIntWeightPerChannelQuant
-        self.conv = QuantConv2d(
+        self.conv = qnn.QuantConv2d(
             in_channels=c1,
             out_channels=c2,
             kernel_size=k,
@@ -97,7 +100,7 @@ class QuantSimpleConv(nn.Module):
             weight_quant=weight_quant,
             weight_bit_width=weight_bit_width)
         if self.use_hardtanh:
-            self.hard_quant = QuantHardTanh(
+            self.hard_quant = qnn.QuantHardTanh(
                 max_val=1.0, min_val=-1.0,
                 act_quant=CommonActQuant,
                 bit_width=8)
@@ -143,7 +146,7 @@ class QuantConv(nn.Module):
             act_quant = CommonActQuant
         else:
             act_quant = CommonUintActQuant
-        self.conv = QuantConv2d(
+        self.conv = qnn.QuantConv2d(
             in_channels=c1,
             out_channels=c2,
             kernel_size=k,
@@ -154,7 +157,7 @@ class QuantConv(nn.Module):
             weight_quant=weight_quant,
             weight_bit_width=weight_bit_width)
         self.bn = nn.BatchNorm2d(c2)
-        self.act = QuantReLU(
+        self.act = qnn.QuantReLU(
             act_quant=act_quant,
             bit_width=act_bit_width,
             per_channel_broadcastable_shape=(1, c2, 1, 1),
@@ -240,7 +243,7 @@ class QuantBottleneck(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_, c2, 3, 1, g=g, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        self.quant_identity = QuantIdentity(bit_width=weight_bit_width)
+        self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
@@ -294,7 +297,7 @@ class QuantC3(nn.Module):
                                  for _ in range(n)])
         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
         if self.use_hardtanh:
-            self.hard_quant = QuantHardTanh(
+            self.hard_quant = qnn.QuantHardTanh(
                 max_val=1.0, min_val=-1.0,
                 act_quant=CommonActQuant,
                 bit_width=8)
@@ -460,6 +463,20 @@ class Concat(nn.Module):
 
     def forward(self, x):
         return torch.cat(x, self.d)
+
+
+class QuantConcat(QuantCat):
+    def __init__(self, dimension=1, tie_input_output_quant=False, return_quant_tensor=True):
+        super().__init__(
+            input_quant=Int8ActPerTensorFloat,
+            output_quant=Int8ActPerTensorFloat,
+            tie_input_output_quant=tie_input_output_quant,
+            return_quant_tensor=return_quant_tensor
+        )
+        self.d = dimension
+    
+    def forward(self, x):
+        return super().forward(x, dim=self.d)
 
 
 class AutoShape(nn.Module):

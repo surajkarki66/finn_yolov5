@@ -320,6 +320,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             args = [ch[f]]
         elif m is Concat:
             c2 = sum([ch[x] for x in f])
+        elif m is QuantConcat:
+            c2 = sum([ch[x] for x in f])
         elif m is Detect:
             if len(args) == 4 or len(args) == 6:
                 args.insert(2, [ch[x] for x in f])
