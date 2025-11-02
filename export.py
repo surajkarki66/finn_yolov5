@@ -32,6 +32,7 @@ from pathlib import Path
 import torch
 import brevitas.export as be
 import torch.nn as nn
+
 from torch.utils.mobile_optimizer import optimize_for_mobile
 
 FILE = Path(__file__).resolve()
@@ -171,7 +172,7 @@ def export_saved_model(model, im, file, dynamic,
     try:
         import tensorflow as tf
         from tensorflow import keras
-        from models.tf import TFModel, TFDetect
+        from models.tf import TFModel
 
         print(f'\n{prefix} starting export with tensorflow {tf.__version__}...')
         f = str(file).replace('.pt', '_saved_model')
