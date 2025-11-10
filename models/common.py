@@ -29,7 +29,6 @@ try:
 except Exception as e:
     from brevitas.nn import TruncAvgPool2d as QuantAvgPool2d
 
-
 from .quant_common import CommonUintActQuant, CommonWeightQuant, CommonActQuant
 from .quant_common import CommonIntWeightPerChannelQuant
 
@@ -461,6 +460,7 @@ class Concat(nn.Module):
 
     def forward(self, x):
         return torch.cat(x, self.d)
+
 
 
 class AutoShape(nn.Module):
