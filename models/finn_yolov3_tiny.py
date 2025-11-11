@@ -5,16 +5,23 @@ import torch.nn as nn
 
 import brevitas.onnx as bo
 
-from graph.target.finn import default_quantize_maps_finn
-from graph.target.finn import preprocess_for_finn_quantize
-from graph.target.finn import quantize_finn
+from models.common import Conv
+from models.yolo import Detect
+from utils.activations import SiLU
+from models.experimental import attempt_load
+from utils.general import check_dataset, check_img_size, check_suffix
+from utils.datasets import create_dataloader
+from utils.torch_utils import TracedModel
+
+from .graph.target.finn import default_quantize_maps_finn
+from .graph.target.finn import preprocess_for_finn_quantize
+from .graph.target.finn import quantize_finn
 
 from utils.quant_utils import apply_act_equalization
 from utils.quant_utils import apply_bias_correction
 from utils.quant_utils import apply_gpfq
 from utils.quant_utils import apply_gptq
 from utils.quant_utils import calibrate
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='YOLOv3-tiny PTQ for FINN')
@@ -24,18 +31,14 @@ def parse_args():
                         help='Path to COCO dataset directory')
     parser.add_argument('--batch-size', type=int, default=16,
                         help='Batch size for calibration and validation')
-    parser.add_argument('--subset-size', type=int, default=None,
-                        help='Subset size for calibration (None = full dataset)')
     parser.add_argument('--img-size', type=int, default=416,
                         help='Input image size')
     
     # Model settings
-    parser.add_argument('--nc', type=int, default=80,
+    parser.add_argument('--nc', type=int, default=1,
                         help='Number of classes')
-    parser.add_argument('--pretrained', type=str, default=None,
+    parser.add_argument('--weights', type=str, default=None,
                         help='Path to pretrained weights file (e.g., best.pt). If not provided, model uses random initialization.')
-    parser.add_argument('--checkpoint', type=str, default='best.pt',
-                        help='Default checkpoint filename (used when --pretrained flag is set without path)')
     
     # Quantization settings
     parser.add_argument('--weight-bit-width', type=int, default=8,
@@ -80,46 +83,56 @@ def main():
     # Configure device
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     print(f"\nUsing device: {device}")
+   
+    # Load model
+    check_suffix(args.weights, '.pt')
+    model = attempt_load(args.weights, map_location=device, inplace=True, fuse=True)
+    model.eval()
+    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    
+    imgsz = check_img_size(args.img_size, s=gs)  # check image size
+    
+    for _, m in model.named_modules():
+        if isinstance(m, Conv):  # assign export-friendly activations
+            if isinstance(m.act, nn.SiLU):
+                m.act = nn.ReLU()
+        elif isinstance(m, Detect):
+            m.inplace = False
+            m.onnx_dynamic = False
+            m.finn_export = True
     
     # Configure datasets
     print(f"\nLoading datasets from: {args.data_dir}")
+    test_data_loader = None
     try:
-        # Dataloader
-        pass
+        data = check_dataset(args.data_dir)
+        gs = 32  # grid size
+        test_data_loader = create_dataloader(data["test"], imgsz, args.batch_size, gs, single_cls=True, pad=0.5, rect=True,
+                                       prefix=f'test: ')[0]
     except Exception as e:
        pass
-   
-    # Load model
-
-    
-    # Test float model
     
     # Modify network to assist the quantization process
     print("\n" + "=" * 80)
     print("Preprocessing Model for Quantization")
     print("=" * 80)
     # take a sample input for tracing
-    # model = preprocess_for_finn_quantize(model, x=x)
-    
-    # Test preprocessed model
-    if args.verbose:
-        print("\nPreprocessed Model Inference")
-        pass
-    
+    x = next(iter(test_data_loader))[0].to(device=device)
+    model = TracedModel(model, device=device, img_size=(416, 416))
+    print(model)
+    model = preprocess_for_finn_quantize(model, x=x)
+    print(model.print_readable())
     # Pre-quantization transformations
     if args.act_eq:
         print("\n" + "=" * 80)
         print(f"Applying Activation Equalization (alpha={args.act_eq_alpha}, add_mul_node={args.act_eq_add_mul_node})")
         print("=" * 80)
         apply_act_equalization(
-            calib_loader,
+            test_data_loader,
             model,
             alpha=args.act_eq_alpha,
             add_mul_node=args.act_eq_add_mul_node
         )
-        if args.verbose:
-            print("\nEqualized Model Inference")
-            ## test
     
     # Quantize Model
     print("\n" + "=" * 80)
@@ -136,7 +149,6 @@ def main():
     # Example customizations (commented out):
     # Override Conv2d weights to have 4-bits
     # finn_quant_maps["compute_layer_map"][nn.Conv2d][1]['weight_bit_width'] = 4
-    
    
     model = quantize_finn(model, **finn_quant_maps)
     model.to(device=device)
@@ -145,44 +157,35 @@ def main():
     print("\n" + "=" * 80)
     print("Applying Activation Calibration")
     print("=" * 80)
-    calibrate(calib_loader, model)
-    if args.verbose:
-        print("\nCalibrated Model Inference")
-        test(model, valid_loader)
+    calibrate(test_data_loader, model)
     
     if args.gptq:
         print("\n" + "=" * 80)
         print("Applying GPTQ")
         print("=" * 80)
-        apply_gptq(calib_loader, model)
-        if args.verbose:
-            print("\nGPTQ Model Inference")
-            test(model, valid_loader)
+        apply_gptq(test_data_loader, model)
     
     if args.gpfq:
         print("\n" + "=" * 80)
         print("Applying GPFQ")
         print("=" * 80)
-        apply_gpfq(calib_loader, model)
-        if args.verbose:
-            print("\nGPFQ Model Inference")
-            test(model, valid_loader)
+        apply_gpfq(test_data_loader, model)
     
     if args.bias_corr:
         print("\n" + "=" * 80)
         print("Applying Bias Correction")
         print("=" * 80)
-        apply_bias_correction(calib_loader, model)
-        if args.verbose:
-            print("\nBias-Corrected Model Inference")
-            test(model, valid_loader)
+        apply_bias_correction(test_data_loader, model)
+        # if args.verbose:
+        #     print("\nBias-Corrected Model Inference")
+        #     test(model, valid_loader)
     
     # Final test
     if not args.verbose:
         print("\n" + "=" * 80)
         print("Final Quantized Model Inference")
         print("=" * 80)
-        test(model, valid_loader)
+        # test(model, valid_loader)
     
     # Export model to QONNX
     print("\n" + "=" * 80)

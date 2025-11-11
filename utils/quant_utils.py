@@ -24,7 +24,7 @@ def calibrate(calib_loader, model):
     
     with torch.no_grad():
         with calibration_mode(model):
-            for i, (images, target) in enumerate(tqdm(calib_loader, desc='Calibrating')):
+            for i, (images, _, _, _) in enumerate(tqdm(calib_loader, desc='Calibrating')):
                 images = images.to(device)
                 images = images.to(dtype)
                 model(images)
@@ -44,7 +44,7 @@ def apply_bias_correction(calib_loader, model):
     
     with torch.no_grad():
         with bias_correction_mode(model):
-            for i, (images, target) in enumerate(tqdm(calib_loader, desc='Bias Correction')):
+            for i, (images, _, _, _) in enumerate(tqdm(calib_loader, desc='Bias Correction')):
                 images = images.to(device)
                 images = images.to(dtype)
                 model(images)
@@ -69,7 +69,7 @@ def apply_act_equalization(calib_loader, model, alpha=0.5, add_mul_node=False):
                                           alpha=alpha,
                                           layerwise=False,
                                           add_mul_node=add_mul_node):
-            for i, (images, target) in enumerate(tqdm(calib_loader, desc='Activation Equalization')):
+            for i, (images, _, _, _) in enumerate(tqdm(calib_loader, desc='Activation Equalization')):
                 images = images.to(device)
                 images = images.to(dtype)
                 model(images)
@@ -105,7 +105,7 @@ def apply_gptq(
                        create_weight_orig=create_weight_orig) as gptq:
             gptq_model = gptq.model
             for i in tqdm(range(gptq.num_layers), desc='GPTQ'):
-                for i, (images, target) in enumerate(calib_loader):
+                for i, (images, _, _, _) in enumerate(calib_loader):
                     images = images.to(device)
                     images = images.to(dtype)
                     gptq_model(images)
@@ -140,7 +140,7 @@ def apply_gpfq(
                        act_order=act_order) as gpfq:
             gpfq_model = gpfq.model
             for i in tqdm(range(gpfq.num_layers), desc='GPFQ'):
-                for i, (images, target) in enumerate(calib_loader):
+                for i, (images, _, _, _) in enumerate(calib_loader):
                     images = images.to(device)
                     images = images.to(dtype)
                     gpfq_model(images)
