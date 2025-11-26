@@ -405,7 +405,7 @@ def parse_opt():
         '--model-type',
         type=str,
         default='yolov1-tiny',
-        choices=['yolov1-tiny', 'yolov3', 'yolov3-tiny', 'yolov5s', 'yolov5m', 'yolov5n'],
+        choices=['yolov1-tiny', 'yolov3', 'yolov3n', 'yolov3-tiny', 'yolov5s', 'yolov5m', 'yolov5n'],
         help='model type for export: yolov1-tiny, yolov3, yolov3-tiny, or yolov5'
     )
     parser.add_argument(

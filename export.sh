@@ -7,4 +7,5 @@
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp7/weights/best.pt --nodetect  --model-type yolov5s --use-hardtanh
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp8/weights/best.pt --nodetect  --model-type yolov5m --use-hardtanh
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect  --model-type yolov5n --use-hardtanh
-#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect  --model-type yolov5n
+python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect  --model-type yolov3n
+#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect  --model-type yolov3n --use-hardtanh
