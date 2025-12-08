@@ -232,15 +232,15 @@ class Bottleneck(nn.Module):
 
 
 class QuantBottleneck(nn.Module):
-    # Standard quantized bottleneck
-    def __init__(self, c1, c2, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
+    # Standard quantized bottleneck with optional skip connection
+    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, g=1, e=0.5):  # ch_in, ch_out, shortcut, weight bit, act bit, groups, expansion
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
+        if self.add:
+            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
@@ -289,8 +289,9 @@ class QuantC3(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv3 = QuantConv(2 * c_, c2, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)  # act=FReLU(c2)
-        self.m = nn.Sequential(*[QuantBottleneck(c_, c_, shortcut, g, e=1.0,
-                                                 weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.m = nn.Sequential(*[QuantBottleneck(c_, c_, shortcut,
+                                                 weight_bit_width=weight_bit_width, act_bit_width=act_bit_width,
+                                                 g=g, e=1.0)
                                  for _ in range(n)])
         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
         if self.use_hardtanh:
