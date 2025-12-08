@@ -130,8 +130,27 @@ class TruncAvgPool(nn.Module):
 class QuantConv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, use_act=True,
-                 use_bn=True, weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, kernel, stride, padding, groups
+                 use_bn=True, weight_bit_width=4, act_bit_width=4, act=None):  # ch_in, ch_out, kernel, stride, padding, groups
         super().__init__()
+        # Handle act parameter - can be True, False, None, or a QuantReLU module
+        if act is None:
+            act = True
+        if isinstance(act, nn.Module):
+            use_act = True
+            self.act = act
+        else:
+            use_act = act if isinstance(act, bool) else use_act
+            if act_bit_width == 1: 
+                act_quant = CommonActQuant
+            else:
+                act_quant = CommonUintActQuant
+            self.act = qnn.QuantReLU(
+                act_quant=act_quant,
+                bit_width=act_bit_width,
+                per_channel_broadcastable_shape=(1, c2, 1, 1),
+                scaling_per_channel=False,
+                return_quant_tensor=True)
+        
         self.use_act = use_act
         self.use_bn = use_bn
 
@@ -139,10 +158,6 @@ class QuantConv(nn.Module):
             weight_quant = CommonWeightQuant
         else:
             weight_quant = CommonIntWeightPerChannelQuant
-        if act_bit_width == 1: 
-            act_quant = CommonActQuant
-        else:
-            act_quant = CommonUintActQuant
         self.conv = qnn.QuantConv2d(
             in_channels=c1,
             out_channels=c2,
@@ -154,12 +169,6 @@ class QuantConv(nn.Module):
             weight_quant=weight_quant,
             weight_bit_width=weight_bit_width)
         self.bn = nn.BatchNorm2d(c2)
-        self.act = qnn.QuantReLU(
-            act_quant=act_quant,
-            bit_width=act_bit_width,
-            per_channel_broadcastable_shape=(1, c2, 1, 1),
-            scaling_per_channel=False,
-            return_quant_tensor=True)
 
     def forward(self, x):
         x = self.conv(x)
@@ -234,11 +243,15 @@ class Bottleneck(nn.Module):
 class QuantBottleneck(nn.Module):
     # Standard quantized bottleneck
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
+                 weight_bit_width=4, act_bit_width=4, cv2_act=None, act=None):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, use_act=True)
+        if act is None:
+            act = True
+        if cv2_act is None:
+            cv2_act = True
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=act)
+        self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=cv2_act)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
@@ -280,16 +293,29 @@ class C3(nn.Module):
 
 class QuantC3(nn.Module):
     # Quantized CSP Bottleneck with 3 convolutions
+    use_common_act = False
+    
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=4, use_hardtanh=False):  # ch_in, ch_out, number, shortcut, groups, expansion, weight bit, act bit
+                 weight_bit_width=4, act_bit_width=4, use_hardtanh=False, act=True):  # ch_in, ch_out, number, shortcut, groups, expansion, weight bit, act bit
         super().__init__()
         self.use_hardtanh = use_hardtanh
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        self.cv2 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        self.cv3 = QuantConv(2 * c_, c2, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)  # act=FReLU(c2)
+        
+        if self.use_common_act:
+            self.common_act = qnn.QuantReLU(
+                act_quant=CommonUintActQuant,
+                bit_width=act_bit_width,
+                per_channel_broadcastable_shape=None,
+                scaling_per_channel=False,
+                return_quant_tensor=True)
+        else:
+            self.common_act = True
+        
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=self.common_act)
+        self.cv2 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=self.common_act)
+        self.cv3 = QuantConv(2 * c_, c2, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=act)  # act=FReLU(c2)
         self.m = nn.Sequential(*[QuantBottleneck(c_, c_, shortcut, g, e=1.0,
-                                                 weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+                                                 weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, cv2_act=self.common_act, act=self.common_act)
                                  for _ in range(n)])
         # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
         if self.use_hardtanh:

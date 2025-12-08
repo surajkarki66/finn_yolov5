@@ -300,6 +300,7 @@ class Model(nn.Module):
 def parse_model(d, ch):  # model_dict, input_channels(3)
     LOGGER.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     anchors, nc, gd, gw = d['anchors'], d['nc'], d['depth_multiple'], d['width_multiple']
+    common_activations = d.get('common_activations')
     if 'use_hardtanh' in d.keys():
         use_hardtanh = d['use_hardtanh']
         
@@ -310,6 +311,22 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
     no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
+    
+    # Setup common activations if specified
+    if "QuantC3_common_act" in d:
+        QuantC3.use_common_act = d['QuantC3_common_act']
+    
+    activations_lookup = {}
+    if common_activations:
+        act_names = list(set(common_activations.values()))
+        for act_name in act_names:
+            if isinstance(act_name, str):
+                activations_lookup[act_name] = qnn.QuantReLU(
+                    act_quant=CommonUintActQuant,
+                    bit_width=common_activations["bitwidth"],
+                    per_channel_broadcastable_shape=None,
+                    scaling_per_channel=False,
+                    return_quant_tensor=True)
     for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
         m = eval(m) if isinstance(m, str) else m  # eval strings
         for j, a in enumerate(args):
@@ -349,7 +366,12 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         else:
             c2 = ch[f]
 
-        m_ = nn.Sequential(*[m(*args) for _ in range(n)]) if n > 1 else m(*args)  # module
+        # Add common activation if specified for this layer
+        kwargs = {}
+        if common_activations and i in common_activations:
+            kwargs["act"] = activations_lookup[common_activations[i]]
+        
+        m_ = nn.Sequential(*[m(*args, **kwargs) for _ in range(n)]) if n > 1 else m(*args, **kwargs)  # module
         t = str(m)[8:-2].replace('__main__.', '')  # module type
         np = sum([x.numel() for x in m_.parameters()])  # number params
         m_.i, m_.f, m_.type, m_.np = i, f, t, np  # attach index, 'from' index, type, number params
