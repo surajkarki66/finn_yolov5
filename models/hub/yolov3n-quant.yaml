@@ -16,7 +16,7 @@ bit_width:
 # darknet53 backbone
 backbone:
   # [from, number, module, args]
-  [[-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]], # 0
+  [[-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]], # 0
    [-1, 1, QuantConv, [64, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 1-P1/2
    [-1, 1, QuantBottleneck, [64, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [128, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 3-P2/4
@@ -51,5 +51,5 @@ head:
    [-1, 1, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],
    [-1, 2, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],  # 27 (P3/8-small)
 
-   [[27, 22, 15], 1, Detect, [nc, anchors, True, use_hardtanh, True, weight_bit_width]],   # Detect(P3, P4, P5)
+   [[27, 22, 15], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],   # Detect(P3, P4, P5)
   ]
