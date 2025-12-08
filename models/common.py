@@ -130,29 +130,15 @@ class TruncAvgPool(nn.Module):
 class QuantConv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, use_act=True,
-                 use_bn=True, weight_bit_width=4, act_bit_width=4, act=None):  # ch_in, ch_out, kernel, stride, padding, groups
+                 use_bn=True, weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, kernel, stride, padding, groups
         super().__init__()
-        # Handle act parameter - can be True, False, None, or a QuantReLU module
-        if act is None:
-            act = True
-        if isinstance(act, nn.Module):
-            use_act = True
-            self.act = act
-        else:
-            use_act = act if isinstance(act, bool) else use_act
-            if act_bit_width == 1: 
-                act_quant = CommonActQuant
-            else:
-                act_quant = CommonUintActQuant
-            self.act = qnn.QuantReLU(
-                act_quant=act_quant,
-                bit_width=act_bit_width,
-                per_channel_broadcastable_shape=(1, c2, 1, 1),
-                scaling_per_channel=False,
-                return_quant_tensor=True)
-        
         self.use_act = use_act
         self.use_bn = use_bn
+
+        if act_bit_width == 1: 
+            act_quant = CommonActQuant
+        else:
+            act_quant = CommonUintActQuant
 
         if weight_bit_width == 1:
             weight_quant = CommonWeightQuant
@@ -243,15 +229,11 @@ class Bottleneck(nn.Module):
 class QuantBottleneck(nn.Module):
     # Standard quantized bottleneck
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5,
-                 weight_bit_width=4, act_bit_width=4, cv2_act=None, act=None):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
+                 weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, shortcut, groups, expansion, weight bit, act bit
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
-        if act is None:
-            act = True
-        if cv2_act is None:
-            cv2_act = True
-        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=act)
-        self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width, act=cv2_act)
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
 
     def forward(self, x):

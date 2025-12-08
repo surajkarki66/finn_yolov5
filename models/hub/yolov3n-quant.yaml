@@ -11,19 +11,7 @@ anchors:
   - [116,90, 156,198, 373,326]  # P5/32
 
 bit_width: 
-  - [4, 4, 4, 4]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
-
-# Enable common activations for QuantC3
-QuantC3_common_act: False
-
-# Common activation configuration
-# Maps layer indices to shared activation quantizers
-common_activations:
-  "bitwidth": 4
-  8: "A"   # P4 backbone output
-  16: "A"  # P4 head conv before upsample
-  6: "B"   # P3 backbone output  
-  23: "B"  # P3 head conv before upsample
+  - [8, 4, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
 
 # darknet53 backbone
 backbone:
@@ -34,9 +22,9 @@ backbone:
    [-1, 1, QuantConv, [128, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 3-P2/4
    [-1, 2, QuantBottleneck, [128, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [256, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 5-P3/8
-   [-1, 8, QuantBottleneck, [256, weight_bit_width, act_bit_width]],                     # 6 - will use common act B
+   [-1, 8, QuantBottleneck, [256, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [512, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 7-P4/16
-   [-1, 8, QuantBottleneck, [512, weight_bit_width, act_bit_width]],                     # 8 - will use common act A
+   [-1, 8, QuantBottleneck, [512, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [1024, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 9-P5/32
    [-1, 4, QuantBottleneck, [1024, weight_bit_width, act_bit_width]],                    # 10
   ]
@@ -49,7 +37,7 @@ head:
    [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 15 (P5/32-large)
 
-   [-2, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 16 - will use common act A
+   [-2, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
    [[-1, 8], 1, Concat, [1]],  # cat backbone P4
    [-1, 1, QuantBottleneck, [512, False, weight_bit_width, act_bit_width]],
@@ -57,7 +45,7 @@ head:
    [-1, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 22 (P4/16-medium)
 
-   [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 23 - will use common act B
+   [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
    [[-1, 6], 1, Concat, [1]],  # cat backbone P3
    [-1, 1, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],
