@@ -139,6 +139,13 @@ class QuantConv(nn.Module):
             act_quant = CommonActQuant
         else:
             act_quant = CommonUintActQuant
+        
+        self.act = qnn.QuantReLU(
+            act_quant=act_quant,
+            bit_width=act_bit_width,
+            per_channel_broadcastable_shape=(1, c2, 1, 1),
+            scaling_per_channel=False,
+            return_quant_tensor=True)
 
         if weight_bit_width == 1:
             weight_quant = CommonWeightQuant
