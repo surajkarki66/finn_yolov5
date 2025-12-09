@@ -3,8 +3,8 @@
 # Parameters
 nc: 1  # number of classes
 use_hardtanh: False
-depth_multiple: 1.0  # model depth multiple
-width_multiple: 1.0  # layer channel multiple
+depth_multiple: 0.33  # model depth multiple
+width_multiple: 0.25  # layer channel multiple
 anchors:
   - [10,13, 16,30, 33,23]  # P3/8
   - [30,61, 62,45, 59,119]  # P4/16
@@ -29,10 +29,10 @@ backbone:
    [-1, 4, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],  # 10
   ]
 
-# YOLOv3-SPP head
+# YOLOv3-SPPF head
 head:
   [[-1, 1, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],
-   [-1, 1, QuantSPP, [512, [5, 9, 13], weight_bit_width, act_bit_width]],
+   [-1, 1, QuantSPPF, [512, 5, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
    [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 15 (P5/32-large)

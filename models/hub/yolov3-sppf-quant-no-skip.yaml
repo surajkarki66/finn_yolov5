@@ -13,7 +13,7 @@ anchors:
 bit_width: 
   - [8, 4, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
 
-# darknet53 backbone (without skip connections for FINN)
+# darknet53 backbone
 backbone:
   # [from, number, module, args]
   [[-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]], # 0
@@ -29,7 +29,7 @@ backbone:
    [-1, 4, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],  # 10
   ]
 
-# YOLOv3-SPPF head (without skip connections for FINN)
+# YOLOv3-SPPF head
 head:
   [[-1, 1, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],
    [-1, 1, QuantSPPF, [512, 5, weight_bit_width, act_bit_width]],
