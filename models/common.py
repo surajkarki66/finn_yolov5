@@ -365,6 +365,22 @@ class SPPF(nn.Module):
             return self.cv2(torch.cat([x, y1, y2, self.m(y2)], 1))
 
 
+class QuantSPP(nn.Module):
+    # Quantized Spatial Pyramid Pooling (QuantSPP) layer
+    def __init__(self, c1, c2, k=(5, 9, 13), weight_bit_width=4, act_bit_width=4):
+        super().__init__()
+        c_ = c1 // 2  # hidden channels
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.cv2 = QuantConv(c_ * (len(k) + 1), c2, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.m = nn.ModuleList([nn.MaxPool2d(kernel_size=x, stride=1, padding=x // 2) for x in k])
+
+    def forward(self, x):
+        x = self.cv1(x)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')  # suppress torch 1.9.0 max_pool2d() warning
+            return self.cv2(torch.cat([x] + [m(x) for m in self.m], 1))
+
+
 class QuantSPPF(nn.Module):
     # Quantized Spatial Pyramid Pooling - Fast (QuantSPPF) layer for YOLOv5 by Glenn Jocher
     def __init__(self, c1, c2, k=5, weight_bit_width=4, act_bit_width=4):  # equivalent to SPP(k=(5, 9, 13))
@@ -372,8 +388,6 @@ class QuantSPPF(nn.Module):
         c_ = c1 // 2  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_ * 4, c2, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
-        # Use MaxPool2d instead of QuantAvgPool2d for FINN compatibility
-        # MaxPool2d with padding is supported by FINN and avoids the output size issue
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
