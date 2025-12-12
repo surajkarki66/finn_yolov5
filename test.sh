@@ -7,4 +7,6 @@
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp7/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp8/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --imgsz 416 --task test
-python3 val.py --data data/hpd2_modified.yaml --weights runs/train/yolov3n-tiny-quant/weights/best.pt --imgsz 416 --task test
+#python3 val.py --data data/hpd2_modified.yaml --weights runs/train/yolov3n-tiny-quant/weights/best.pt --imgsz 416 --task test
+
+python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --imgsz 416 --task test
