@@ -1,6 +1,6 @@
 absl-py==2.1.0
-brevitas==0.11.0
-#brevitas==0.10.3  # for yolov1-tiny
+#brevitas==0.12.0
+brevitas==0.10.3  # for yolov1-tiny
 cachetools==5.5.0
 certifi==2024.8.30
 charset-normalizer==3.4.0
