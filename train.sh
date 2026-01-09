@@ -47,3 +47,5 @@ python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3n-tiny-qu
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3xl-tiny-quant_8w8a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3s-quant-no-skip.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3s-quant-no-skip_8w8a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3m-quant-no-skip.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/yolov3m-quant-no-skip_8w8a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
