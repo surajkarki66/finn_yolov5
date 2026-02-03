@@ -8,6 +8,7 @@ Usage:
 
 import argparse
 import sys
+
 from copy import deepcopy
 from pathlib import Path
 
@@ -15,7 +16,6 @@ FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
-# ROOT = ROOT.relative_to(Path.cwd())  # relative
 
 from models.common import *
 from models.quant_common import CommonIntWeightPerChannelQuant
@@ -381,9 +381,3 @@ if __name__ == '__main__':
     if opt.profile:
         img = torch.rand(8 if torch.cuda.is_available() else 1, 3, 640, 640).to(device)
         y = model(img, profile=True)
-
-    # Tensorboard (not working https://github.com/ultralytics/yolov5/issues/2898)
-    # from torch.utils.tensorboard import SummaryWriter
-    # tb_writer = SummaryWriter('.')
-    # LOGGER.info("Run 'tensorboard --logdir=models' to view tensorboard at http://localhost:6006/")
-    # tb_writer.add_graph(torch.jit.trace(model, img, strict=False), [])  # add model graph
