@@ -89,9 +89,10 @@ This project builds upon the work of the original LPYOLO authors:
 - Hasan Sakir Bilge
 
 Original paper: "LPYOLO: Low Precision YOLO for Face Detection on FPGA" (EECSS'22)
-
+[quantized-yolov5](https://github.com/sefaburakokcu/quantized-yolov5.git)
 ## References
 
+* [quantized-yolov5](https://github.com/sefaburakokcu/quantized-yolov5.git)
 * [Ultralytics YOLOv5](https://github.com/ultralytics/yolov5)
 * [BREVITAS](https://github.com/Xilinx/brevitas)
 * [FINN](https://github.com/Xilinx/finn)
