@@ -1,6 +1,6 @@
-## Contributing to YOLOv5 🚀
+## Contributing to finn_yolov5 🚀
 
-We love your input! We want to make contributing to YOLOv5 as easy and transparent as possible, whether it's:
+We love your input! We want to make contributing to finn_yolov5 as easy and transparent as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
@@ -8,7 +8,7 @@ We love your input! We want to make contributing to YOLOv5 as easy and transpare
 - Proposing a new feature
 - Becoming a maintainer
 
-YOLOv5 works so well due to our combined community effort, and for every small improvement you contribute you will be
+finn_yolov5 works so well due to our combined community effort, and for every small improvement you contribute you will be
 helping push the frontiers of what's possible in AI 😃!
 
 ## Submitting a Pull Request (PR) 🛠️
@@ -34,7 +34,7 @@ Change `matplotlib` version from `3.2.2` to `3.3`.
 
 Click on the **Preview changes** tab to verify your updates. At the bottom of the screen select 'Create a **new branch**
 for this commit', assign your branch a descriptive name such as `fix/matplotlib_version` and click the green **Propose
-changes** button. All done, your PR is now submitted to YOLOv5 for review and approval 😃!
+changes** button. All done, your PR is now submitted to finn_yolov5 for review and approval 😃!
 <p align="center"><img width="800" alt="PR_step4" src="https://user-images.githubusercontent.com/26833433/122260856-0b208000-ced4-11eb-8e8e-77b6151cbcc3.png"></p>
 
 ### PR recommendations
@@ -42,12 +42,12 @@ changes** button. All done, your PR is now submitted to YOLOv5 for review and ap
 To allow your work to be integrated as seamlessly as possible, we advise you to:
 
 - ✅ Verify your PR is **up-to-date with origin/master.** If your PR is behind origin/master an
-  automatic [GitHub actions](https://github.com/ultralytics/yolov5/blob/master/.github/workflows/rebase.yml) rebase may
+  automatic [GitHub actions](https://github.com/surajkarki66/finn_yolov5/blob/master/.github/workflows/rebase.yml) rebase may
   be attempted by including the /rebase command in a comment body, or by running the following code, replacing 'feature'
   with the name of your local branch:
 
 ```bash
-git remote add upstream https://github.com/ultralytics/yolov5.git
+git remote add upstream https://github.com/surajkarki66/finn_yolov5.git
 git fetch upstream
 git checkout feature  # <----- replace 'feature' with local branch name
 git merge upstream/master
@@ -60,7 +60,7 @@ git push -u origin -f
 
 ## Submitting a Bug Report 🐛
 
-If you spot a problem with YOLOv5 please submit a Bug Report!
+If you spot a problem with finn_yolov5 please submit a Bug Report!
 
 For us to start investigating a possibel problem we need to be able to reproduce it ourselves first. We've created a few
 short guidelines below to help users provide what we need in order to get started.
@@ -74,17 +74,17 @@ the problem should be:
 * ✅ **Complete** – Provide **all** parts someone else needs to reproduce your problem in the question itself
 * ✅ **Reproducible** – Test the code you're about to provide to make sure it reproduces the problem
 
-In addition to the above requirements, for [Ultralytics](https://ultralytics.com/) to provide assistance your code
+In addition to the above requirements, for [FINN](https://github.com/Xilinx/finn) to provide assistance your code
 should be:
 
 * ✅ **Current** – Verify that your code is up-to-date with current
-  GitHub [master](https://github.com/ultralytics/yolov5/tree/master), and if necessary `git pull` or `git clone` a new
+  GitHub [master](https://github.com/surajkarki66/finn_yolov5/tree/master), and if necessary `git pull` or `git clone` a new
   copy to ensure your problem has not already been resolved by previous commits.
 * ✅ **Unmodified** – Your problem must be reproducible without any modifications to the codebase in this
-  repository. [Ultralytics](https://ultralytics.com/) does not provide support for custom code ⚠️.
+  repository. [FINN](https://github.com/Xilinx/finn) does not provide support for custom code ⚠️.
 
 If you believe your problem meets all of the above criteria, please close this issue and raise a new one using the 🐛 **
-Bug Report** [template](https://github.com/ultralytics/yolov5/issues/new/choose) and providing
+Bug Report** [template](https://github.com/surajkarki66/finn_yolov5/issues/new/choose) and providing
 a [minimum reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) to help us better
 understand and diagnose your problem.
 
