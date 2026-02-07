@@ -252,7 +252,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     if cuda and RANK != -1:
         model = DDP(model, device_ids=[LOCAL_RANK], output_device=LOCAL_RANK)
 
-    model_definition['anchors'] = (model.module.model[-1].anchors*model.module.model[-1].stride).cpu().reshape(model.module.model[-1].anchors.shape[0], -1).tolist()\
+    model_definition['anchors'] = (model.module.model[-1].anchors*model.module.model[-1].stride[:, None, None]).cpu().reshape(model.module.model[-1].anchors.shape[0], -1).tolist()\
         if hasattr(model, 'module') else (model.model[-1].anchors*model.model[-1].stride[:, None, None]).cpu().reshape(model.model[-1].anchors.shape[0], -1).tolist()
     with open(save_dir / 'model.yaml', 'w') as f:
         yaml.safe_dump(model_definition, f, sort_keys=False)

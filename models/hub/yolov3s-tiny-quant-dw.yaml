@@ -4,7 +4,7 @@
 nc: 1  # number of classes
 use_hardtanh: False
 depth_multiple: 0.33  # model depth multiple
-width_multiple: 0.25  # layer channel multiple
+width_multiple: 0.50  # layer channel multiple
 anchors:
   - [10,14, 23,27, 37,58]  # P4/16
   - [81,82, 135,169, 344,319]  # P5/32
