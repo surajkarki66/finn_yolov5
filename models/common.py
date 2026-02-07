@@ -374,6 +374,33 @@ class QuantC3(nn.Module):
         return out
 
 
+class QuantC3DW(nn.Module):
+    # Quantized CSP Bottleneck with 3 convolutions using depthwise convolutions
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5,
+                 weight_bit_width=4, act_bit_width=4, use_hardtanh=False):  # ch_in, ch_out, number, shortcut, groups, expansion, weight bit, act bit
+        super().__init__()
+        self.use_hardtanh = use_hardtanh
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.cv2 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.cv3 = QuantConv(2 * c_, c2, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.m = nn.Sequential(*[QuantBottleneckDW(c_, c_, shortcut,
+                                                   weight_bit_width=weight_bit_width, act_bit_width=act_bit_width,
+                                                   e=1.0)
+                                 for _ in range(n)])
+        if self.use_hardtanh:
+            self.hard_quant = qnn.QuantHardTanh(
+                max_val=1.0, min_val=-1.0,
+                act_quant=CommonActQuant,
+                bit_width=8)
+
+    def forward(self, x):
+        out = self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+        if self.use_hardtanh:
+            out = self.hard_quant(out / 2)
+        return out
+
+
 class C3TR(C3):
     # C3 module with TransformerBlock()
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
