@@ -10,5 +10,13 @@ python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weigh
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --nodetect --use-hardtanh  --model-type yolov1-tiny
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp4/weights/best.pt --nodetect --use-hardtanh  --model-type yolov1-tiny
 
+# YOLOv3n single-scale export examples (new lightweight model for FINN)
+#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect --model-type yolov3n-single-scale --imgsz 416
+#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect --use-hardtanh --model-type yolov3n-single-scale --imgsz 416
+
+# YOLOv5n single-scale export examples (new lightweight model for FINN)
+#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect --model-type yolov5n-single-scale --imgsz 416
+#python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --nodetect --use-hardtanh --model-type yolov5n-single-scale --imgsz 416
+
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --nodetect --use-hardtanh  --model-type yolov1-tiny
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp4/weights/best.pt --nodetect --use-hardtanh  --model-type yolov1-tiny

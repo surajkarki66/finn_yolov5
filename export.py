@@ -77,7 +77,7 @@ def export_qonnx(model, im, file, model_type, use_hardtanh, prefix=colorstr('Qon
         f = file.with_suffix('.qonnx.onnx')
         input_shape = im.numpy().shape
         be.export_qonnx(model, im, f)
-        if model_type == 'yolov1-tiny' and use_hardtanh:
+        if (model_type == 'yolov1-tiny' or model_type == 'yolov3n-single-scale' or model_type == 'yolov5n-single-scale') and use_hardtanh:
            save_scale_params(model, file)
 
     except Exception as e:
@@ -343,6 +343,10 @@ def run(data=ROOT / 'data/coco128.yaml',  # 'dataset.yaml path'
     if nodetect:
         if model_type == 'yolov1-tiny':
             model.model = nn.Sequential(*[model.model[i] for i in range(15)])
+        elif model_type == 'yolov3n-single-scale':
+            model.model = nn.Sequential(*[model.model[i] for i in range(17)])
+        elif model_type == 'yolov5n-single-scale':
+            model.model = nn.Sequential(*[model.model[i] for i in range(15)])
         else:
             for m in model.modules():
                 if isinstance(m, Detect):
@@ -405,8 +409,8 @@ def parse_opt():
         '--model-type',
         type=str,
         default='yolov1-tiny',
-        choices=['yolov1-tiny', 'yolov3', 'yolov3n', 'yolov3-tiny', 'yolov5s', 'yolov5m', 'yolov5n'],
-        help='model type for export: yolov1-tiny, yolov3, yolov3-tiny, or yolov5'
+        choices=['yolov1-tiny', 'yolov3', 'yolov3n', 'yolov3n-single-scale', 'yolov3-tiny', 'yolov5s', 'yolov5m', 'yolov5n', 'yolov5n-single-scale'],
+        help='model type for export: yolov1-tiny, yolov3, yolov3n, yolov3n-single-scale, yolov3-tiny, yolov5n, yolov5n-single-scale, or yolov5'
     )
     parser.add_argument(
         '--use-hardtanh',

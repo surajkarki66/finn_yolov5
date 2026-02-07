@@ -246,6 +246,72 @@ class QuantBottleneck(nn.Module):
     def forward(self, x):
         return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
+class QuantDWConv(nn.Module):
+    # Quantized Depth-wise convolution class for QAT
+    def __init__(self, c1, c2, k=1, s=1, p=None, use_act=True,
+                 use_bn=True, weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, kernel, stride, padding, use_act, use_bn, weight bit, act bit
+        super().__init__()
+        self.use_act = use_act
+        self.use_bn = use_bn
+        g = math.gcd(c1, c2)  # depth-wise groups
+
+        if weight_bit_width == 1:
+            weight_quant = CommonWeightQuant
+        else:
+            weight_quant = CommonIntWeightPerChannelQuant
+        if act_bit_width == 1:
+            act_quant = CommonActQuant
+        else:
+            act_quant = CommonUintActQuant
+        self.conv = qnn.QuantConv2d(
+            in_channels=c1,
+            out_channels=c2,
+            kernel_size=k,
+            stride=s,
+            padding=autopad(k, p),
+            groups=g,
+            bias=False,
+            weight_quant=weight_quant,
+            weight_bit_width=weight_bit_width)
+        self.bn = nn.BatchNorm2d(c2)
+        self.act = qnn.QuantReLU(
+            act_quant=act_quant,
+            bit_width=act_bit_width,
+            per_channel_broadcastable_shape=(1, c2, 1, 1),
+            scaling_per_channel=False,
+            return_quant_tensor=True)
+
+    def forward(self, x):
+        x = self.conv(x)
+        if self.use_bn:
+            x = self.bn(x)
+        if self.use_act:
+            x = self.act(x)
+        return x
+
+    def forward_fuse(self, x):
+        x = self.conv(x)
+        if self.use_act:
+            x = self.act(x)
+        return x
+
+
+class QuantBottleneckDW(nn.Module):
+    # Quantized bottleneck with depthwise convolution and optional skip connection
+    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, e=0.5):  # ch_in, ch_out, shortcut, weight bit, act bit, expansion
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.cv2 = QuantDWConv(c_, c2, 3, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
+        self.add = shortcut and c1 == c2
+        if self.add:
+            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
+
+    def forward(self, x):
+        return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
 class BottleneckCSP(nn.Module):
     # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
