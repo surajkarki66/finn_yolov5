@@ -1,0 +1,41 @@
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Prunned YOLOv3
+
+# Parameters
+nc: 1  # number of classes
+use_hardtanh: False
+depth_multiple: 0.33  # model depth multiple
+width_multiple: 0.25  # layer channel multiple
+anchors:
+  - [116,90, 156,198, 373,326]  # P5/32 - single scale only
+
+bit_width: 
+  - [8, 4, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
+
+# darknet53 backbone
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]], # 0
+   [-1, 1, QuantConv, [64, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 1-P1/2
+   [-1, 1, QuantBottleneck, [64, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [128, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 3-P2/4
+   [-1, 2, QuantBottleneck, [128, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [256, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 5-P3/8
+   [-1, 8, QuantBottleneck, [256, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 7-P4/16
+   [-1, 8, QuantBottleneck, [512, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 9-P5/32
+   [-1, 4, QuantBottleneck, [1024, True, weight_bit_width, act_bit_width]],                    # 10
+  ]
+
+# YOLOv3 head (P5/32)
+head:
+  [[-1, 1, QuantBottleneck, [1024, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 15 (P5/32-large)
+   [-1, 1, QuantSimpleConv, [(nc+5)*3, 3, 1, None, 1, out_weight_bit_width, act_bit_width, use_hardtanh]],
+   
+   [[16], 1, Detect, [nc, anchors, False, use_hardtanh]],  # Detect(P5) - single-scale detection
+  ]
