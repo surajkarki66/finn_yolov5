@@ -125,9 +125,6 @@ class TruncAvgPool(nn.Module):
         x = self.trunc(x)
         return x
 
-
-
-
 class QuantConv(nn.Module):
     # Standard convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, use_act=True,
@@ -180,7 +177,11 @@ class QuantConv(nn.Module):
 class DWConv(Conv):
     # Depth-wise convolution class
     def __init__(self, c1, c2, k=1, s=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
-        super().__init__(c1, c2, k, s, g=math.gcd(c1, c2), act=act)
+        # Use grouped convolution **only** for pure depthwise (c1 == c2).
+        # For channel-expanding layers (c1 != c2), fall back to standard conv (groups=1)
+        # to keep FINN's LowerConvsToMatMul happy (it only supports groups=1 or pure depthwise).
+        g = c1 if c1 == c2 else 1
+        super().__init__(c1, c2, k, s, g=g, act=act)
 
 
 class TransformerLayer(nn.Module):
@@ -248,14 +249,12 @@ class QuantBottleneck(nn.Module):
 
 
 class QuantDWConv(nn.Module):
-    # Quantized Depth-wise convolution class for QAT
+    # Quantized Depth-wise convolution
     def __init__(self, c1, c2, k=1, s=1, p=None, use_act=True,
                  use_bn=True, weight_bit_width=4, act_bit_width=4):  # ch_in, ch_out, kernel, stride, padding, use_act, use_bn, weight bit, act bit
         super().__init__()
         self.use_act = use_act
         self.use_bn = use_bn
-        g = math.gcd(c1, c2)  # depth-wise groups
-
         if weight_bit_width == 1:
             weight_quant = CommonWeightQuant
         else:
@@ -264,17 +263,35 @@ class QuantDWConv(nn.Module):
             act_quant = CommonActQuant
         else:
             act_quant = CommonUintActQuant
-        self.conv = qnn.QuantConv2d(
+
+        # depthwise part
+        self.dw = qnn.QuantConv2d(
             in_channels=c1,
-            out_channels=c2,
+            out_channels=c1,
             kernel_size=k,
             stride=s,
             padding=autopad(k, p),
-            groups=g,
+            groups=c1,
             bias=False,
             weight_quant=weight_quant,
-            weight_bit_width=weight_bit_width)
-        self.bn = nn.BatchNorm2d(c2)
+            weight_bit_width=weight_bit_width,
+        )
+        self.dw_bn = nn.BatchNorm2d(c1) if self.use_bn else nn.Identity()
+
+        # pointwise part
+        self.pw = qnn.QuantConv2d(
+            in_channels=c1,
+            out_channels=c2,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            groups=1,
+            bias=False,
+            weight_quant=weight_quant,
+            weight_bit_width=weight_bit_width,
+        )
+        self.pw_bn = nn.BatchNorm2d(c2) if self.use_bn else nn.Identity()
+
         self.act = qnn.QuantReLU(
             act_quant=act_quant,
             bit_width=act_bit_width,
@@ -283,15 +300,17 @@ class QuantDWConv(nn.Module):
             return_quant_tensor=True)
 
     def forward(self, x):
-        x = self.conv(x)
-        if self.use_bn:
-            x = self.bn(x)
+        x = self.dw(x)
+        x = self.dw_bn(x)
+        x = self.pw(x)
+        x = self.pw_bn(x)
         if self.use_act:
             x = self.act(x)
         return x
 
     def forward_fuse(self, x):
-        x = self.conv(x)
+        x = self.dw(x)
+        x = self.pw(x)
         if self.use_act:
             x = self.act(x)
         return x
