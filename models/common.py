@@ -1,9 +1,11 @@
+
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 """
 Common modules
 """
 
 import logging
+import math
 import warnings
 from copy import copy
 from pathlib import Path
@@ -17,7 +19,6 @@ import torch.nn as nn
 from PIL import Image
 from torch.cuda import amp
 
-from brevitas.quant_tensor import QuantTensor
 from utils.datasets import exif_transpose, letterbox
 from utils.general import colorstr, increment_path, make_divisible, non_max_suppression, save_one_box, \
     scale_coords, xyxy2xywh
@@ -232,36 +233,19 @@ class Bottleneck(nn.Module):
 
 
 class QuantBottleneck(nn.Module):
-    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, g=1, e=0.5):
+    # Standard quantized bottleneck with optional skip connection
+    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, g=1, e=0.5):  # ch_in, ch_out, shortcut, weight bit, act bit, groups, expansion
         super().__init__()
-        c_ = int(c2 * e)
+        c_ = int(c2 * e)  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        
         if self.add:
-            # Use ReLU to ensure same sign
-            self.skip_relu = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
-            # Add ReLU after addition
-            self.relu_out = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
+            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
-        if self.add:
-            out = self.cv2(self.cv1(x))
-            skip = self.skip_relu(x)
-            assert isinstance(out, QuantTensor)
-            assert isinstance(x, QuantTensor)
-            out = out + skip
-            out = self.relu_out(out)
-            return out
-        else:
-            return self.cv2(self.cv1(x))
+        return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
 
 class QuantDWConv(nn.Module):
     # Quantized Depth-wise convolution
@@ -345,34 +329,20 @@ class QuantDWConv(nn.Module):
             x = self.pw_act(x)
         return x
 
+
 class QuantBottleneckDW(nn.Module):
-    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, e=0.5):
+    # Quantized bottleneck with depthwise convolution and optional skip connection
+    def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, e=0.5):  # ch_in, ch_out, shortcut, weight bit, act bit, expansion
         super().__init__()
-        c_ = int(c2 * e)
+        c_ = int(c2 * e)  # hidden channels
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantDWConv(c_, c2, 3, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        
         if self.add:
-            self.skip_relu = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
-            
-            self.relu_out = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
+            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
-        if self.add:
-            out = self.cv2(self.cv1(x))
-            skip = self.skip_relu(x)
-            out = out + skip
-            out = self.relu_out(out)
-            return out
-        else:
-            return self.cv2(self.cv1(x))
+        return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
 
 class BottleneckCSP(nn.Module):
@@ -403,6 +373,7 @@ class C3(nn.Module):
         self.cv2 = Conv(c1, c_, 1, 1)
         self.cv3 = Conv(2 * c_, c2, 1)  # act=FReLU(c2)
         self.m = nn.Sequential(*[Bottleneck(c_, c_, shortcut, g, e=1.0) for _ in range(n)])
+        # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
 
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
@@ -422,6 +393,7 @@ class QuantC3(nn.Module):
                                                  weight_bit_width=weight_bit_width, act_bit_width=act_bit_width,
                                                  g=g, e=1.0)
                                  for _ in range(n)])
+        # self.m = nn.Sequential(*[CrossConv(c_, c_, 3, 1, g, 1.0, shortcut) for _ in range(n)])
         if self.use_hardtanh:
             self.hard_quant = qnn.QuantHardTanh(
                 max_val=1.0, min_val=-1.0,
