@@ -254,10 +254,10 @@ class QuantBottleneck(nn.Module):
     def forward(self, x):
         if self.add:
             out = self.cv2(self.cv1(x))
-            x = self.skip_relu(x)
+            skip = self.skip_relu(x)
             assert isinstance(out, QuantTensor)
             assert isinstance(x, QuantTensor)
-            out = out + x
+            out = out + skip
             out = self.relu_out(out)
             return out
         else:
@@ -367,8 +367,8 @@ class QuantBottleneckDW(nn.Module):
     def forward(self, x):
         if self.add:
             out = self.cv2(self.cv1(x))
-            x = self.skip_relu(x)
-            out = out + x
+            skip = self.skip_relu(x)
+            out = out + skip
             out = self.relu_out(out)
             return out
         else:
