@@ -17,7 +17,6 @@ import torch.nn as nn
 from PIL import Image
 from torch.cuda import amp
 
-from brevitas.quant_tensor import QuantTensor
 from utils.datasets import exif_transpose, letterbox
 from utils.general import colorstr, increment_path, make_divisible, non_max_suppression, save_one_box, \
     scale_coords, xyxy2xywh
@@ -240,7 +239,7 @@ class QuantBottleneck(nn.Module):
         self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
         if self.add:
-            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width, return_quant_tensor=True)
+            self.quant_identity = qnn.QuantIdentity(bit_width=act_bit_width)
 
     def forward(self, x):
         return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
@@ -336,7 +335,7 @@ class QuantBottleneckDW(nn.Module):
         self.cv2 = QuantDWConv(c_, c2, 3, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
         if self.add:
-            self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width, return_quant_tensor=True)
+            self.quant_identity = qnn.QuantIdentity(bit_width=act_bit_width)
 
     def forward(self, x):
         return self.quant_identity(x) + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
