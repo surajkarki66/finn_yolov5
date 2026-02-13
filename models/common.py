@@ -156,8 +156,8 @@ class QuantConv(nn.Module):
             act_quant=act_quant,
             bit_width=act_bit_width,
             per_channel_broadcastable_shape=(1, c2, 1, 1),
-            #scaling_stats_permute_dims=(1, 0, 2, 3),
-            scaling_per_channel=False,
+            scaling_stats_permute_dims=(1, 0, 2, 3),
+            scaling_per_channel=True,
             return_quant_tensor=True)
 
     def forward(self, x):
@@ -276,8 +276,8 @@ class QuantDWConv(nn.Module):
             act_quant=act_quant,
             bit_width=act_bit_width,
             per_channel_broadcastable_shape=(1, c1, 1, 1),
-            #scaling_stats_permute_dims=(1, 0, 2, 3),
-            scaling_per_channel=False,  
+            scaling_stats_permute_dims=(1, 0, 2, 3),
+            scaling_per_channel=True,  
             return_quant_tensor=True) if self.use_act else nn.Identity()
 
         # Pointwise part
@@ -298,8 +298,8 @@ class QuantDWConv(nn.Module):
             act_quant=act_quant,
             bit_width=act_bit_width,
             per_channel_broadcastable_shape=(1, c2, 1, 1),
-            #scaling_stats_permute_dims=(1, 0, 2, 3), 
-            scaling_per_channel=False, 
+            scaling_stats_permute_dims=(1, 0, 2, 3), 
+            scaling_per_channel=True, 
             return_quant_tensor=True) if self.use_act else nn.Identity()
 
     def forward(self, x):
