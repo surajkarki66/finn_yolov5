@@ -133,7 +133,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     if pt and device.type != 'cpu':
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.parameters())))  # run once
     dt, seen = [0.0, 0.0, 0.0], 0
-    ind = 0
     for path, img, im0s, vid_cap in dataset:
         t1 = time_sync()
         if onnx:
@@ -151,8 +150,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         if pt:
             visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
             pred = model(img, augment=augment, visualize=visualize)[0]
-            #np.save(f"first_model_output_{ind}.npy", pred.numpy())
-            ind += 1
         elif onnx:
             if dnn:
                 net.setInput(img)
@@ -211,7 +208,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             s += '%gx%g ' % img.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if widerface:
-                gn = 1
                 with open(txt_path + '.txt', 'a') as f:
                     f.write('%s/%s' % (p.parts[-2],p.name) + '\n')
                     
@@ -234,10 +230,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                     if save_txt:  # Write to file
                         if not widerface:
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-                            line = (cls, *xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
+                            line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         else:
                             xywh = (xyxy2xywhtb(torch.tensor(xyxy).view(1, 4))).view(-1).tolist()  # xywh
-                            line = (*xywh, conf) if opt.save_conf else (cls, *xywh)  # label format
+                            line = (*xywh, conf) if save_conf else (cls, *xywh)  # label format
                         with open(txt_path + '.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
