@@ -75,7 +75,6 @@ def export_qonnx(model, im, file, model_type, use_hardtanh, prefix=colorstr('Qon
     try:
         print(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = file.with_suffix('.qonnx.onnx')
-        input_shape = im.numpy().shape
         be.export_qonnx(model, im, f)
         if (model_type == 'yolov1-tiny' or model_type == 'yolov3n-single-scale' or model_type == 'yolov5n-single-scale') and use_hardtanh:
            save_scale_params(model, file)

@@ -26,7 +26,7 @@ from utils.torch_utils import time_sync
 import brevitas.nn as qnn
 try:
     from brevitas.nn import QuantAvgPool2d
-except Exception as e:
+except Exception:
     from brevitas.nn import TruncAvgPool2d as QuantAvgPool2d
 
 from .quant_common import CommonUintActQuant, CommonWeightQuant, CommonActQuant
