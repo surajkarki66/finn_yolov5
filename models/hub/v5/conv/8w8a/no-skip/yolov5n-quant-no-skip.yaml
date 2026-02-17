@@ -1,4 +1,3 @@
-```yaml
 # YOLOv5n 🚀 by Ultralytics, GPL-3.0 license
 
 # Parameters
@@ -50,4 +49,3 @@ head:
 
    [[17, 20, 23], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P3, P4, P5)
   ]
-```
