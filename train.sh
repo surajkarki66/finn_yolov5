@@ -81,6 +81,10 @@
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/4w4a/no-skip/yolov5s-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/4w4a/no-skip/yolov5m-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
+python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/8w8a/no-skip/yolov5n-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/8w8a/no-skip/yolov5s-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/8w8a/no-skip/yolov5m-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dw/4w4a/no-skip/yolov3n-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dw/4w4a/no-skip/yolov3s-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dw/4w4a/no-skip/yolov3m-quant-no-skip-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
@@ -90,6 +94,11 @@
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/dws/4w4a/yolov3m-tiny-quant-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/dws/4w4a/yolov3l-tiny-quant-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/dws/4w4a/yolov3xl-tiny-quant-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/dws/8w8a/yolov3n-tiny-quant-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+
 
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v1/dw/4w4a/yolov1-tiny-quant-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v1/dw/8w8a/yolov1-tiny-quant-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml

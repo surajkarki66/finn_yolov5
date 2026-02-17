@@ -1,0 +1,43 @@
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+
+# Parameters
+nc: 1  # number of classes
+use_hardtanh: False
+depth_multiple: 0.33  # model depth multiple
+width_multiple: 0.25  # layer channel multiple
+anchors:
+  - [10,14, 23,27, 37,58]  # P4/16
+  - [81,82, 135,169, 344,319]  # P5/32
+
+bit_width: 
+  - [8, 8, 8, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
+
+# YOLOv3-tiny backbone with depthwise convolutions
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, QuantConv, [16, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]],  # 0
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 1-P1/2
+   [-1, 1, QuantDWConv, [32, 3, 1, None, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 3-P2/4
+   [-1, 1, QuantDWConv, [64, 3, 1, None, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 5-P3/8
+   [-1, 1, QuantDWConv, [128, 3, 1, None, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 7-P4/16
+   [-1, 1, QuantDWConv, [256, 3, 1, None, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],  # 9-P5/32
+   [-1, 1, QuantDWConv, [512, 3, 1, None, True, True, weight_bit_width, act_bit_width]],  # 10
+   [-1, 1, nn.MaxPool2d, [3, 1, 1]],  # 11 - kernel=3, stride=1, padding=1 (maintains spatial size)
+  ]
+
+# YOLOv3-tiny head with depthwise convolutions (two-scale)
+head:
+  [[-1, 1, QuantDWConv, [1024, 3, 1, None, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantDWConv, [512, 3, 1, None, True, True, weight_bit_width, act_bit_width]],  # 14 (P5/32-large)
+   [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 8], 1, Concat, [1]],  # cat backbone P4
+   [-1, 1, QuantDWConv, [256, 3, 1, None, True, True, weight_bit_width, act_bit_width]],  # 18 (P4/16-medium)
+
+   [[18, 14], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P4, P5)
+  ]
