@@ -273,6 +273,13 @@ class Model(nn.Module):
                 m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
                 delattr(m, 'bn')  # remove batchnorm
                 m.forward = m.forward_fuse  # update forward
+            elif isinstance(m, DWSConv) and m.use_bn:
+                m.dw = fuse_conv_and_bn(m.dw, m.dw_bn)
+                m.pw = fuse_conv_and_bn(m.pw, m.pw_bn)
+                delattr(m, 'dw_bn')
+                delattr(m, 'pw_bn')
+                m.use_bn = False
+                m.forward = m.forward_fuse
         self.info()
         return self
 
@@ -319,7 +326,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 pass
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
-        if m in [Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, MixConv2d, Focus, CrossConv,
+        if m in [Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, DWSConv, MixConv2d, Focus, CrossConv,
                  BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, SimpleConv, QuantConv, QuantSimpleConv, QuantC3, QuantBottleneck,
                  QuantSPP, QuantSPPF, QuantDWConv, QuantBottleneckDW, QuantC3DW]:
             c1, c2 = ch[f], args[0]

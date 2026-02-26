@@ -181,6 +181,43 @@ class DWConv(Conv):
         super().__init__(c1, c2, k, s, g=g, act=act)
 
 
+class DWSConv(nn.Module):
+    def __init__(self, c1, c2, k=1, s=1, p=None, use_act=True, use_bn=True):
+        super().__init__()
+        self.use_act = use_act
+        self.use_bn = use_bn
+
+        self.dw = nn.Conv2d(c1, c1, k, s, autopad(k, p), groups=c1, bias=False)
+        self.dw_bn = nn.BatchNorm2d(c1) if self.use_bn else nn.Identity()
+        self.dw_act = nn.ReLU() if self.use_act else nn.Identity()
+
+        self.pw = nn.Conv2d(c1, c2, 1, 1, 0, bias=False)
+        self.pw_bn = nn.BatchNorm2d(c2) if self.use_bn else nn.Identity()
+        self.pw_act = nn.ReLU() if self.use_act else nn.Identity()
+
+    def forward(self, x):
+        x = self.dw(x)
+        if self.use_bn:
+            x = self.dw_bn(x)
+        if self.use_act:
+            x = self.dw_act(x)
+        x = self.pw(x)
+        if self.use_bn:
+            x = self.pw_bn(x)
+        if self.use_act:
+            x = self.pw_act(x)
+        return x
+
+    def forward_fuse(self, x):
+        x = self.dw(x)
+        if self.use_act:
+            x = self.dw_act(x)
+        x = self.pw(x)
+        if self.use_act:
+            x = self.pw_act(x)
+        return x
+
+
 class TransformerLayer(nn.Module):
     # Transformer layer https://arxiv.org/abs/2010.11929 (LayerNorm layers removed for better performance)
     def __init__(self, c, num_heads):
