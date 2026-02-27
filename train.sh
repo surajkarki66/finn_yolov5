@@ -117,13 +117,13 @@ python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v1/conv/fp_mode
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v1/dws/fp_model/yolov1-tiny-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 
 ## YOLOv3-tiny
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/fp_model/yolov3n-tiny.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dws/fp_model/yolov3n-tiny-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/dws/fp_model/yolov3n-tiny-dw.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 
 ## YOLOv3
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/fp_model/no-skip/yolov3n.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dws/fp_model/no-skip/yolov3n-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/fp_model/no-skip/yolov3n.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/dws/fp_model/no-skip/yolov3n-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 
 ## YOLOv5
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/no-skip/yolov5n-dw.yaml --weights '' --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/no-skip/yolov5n-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
