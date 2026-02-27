@@ -398,6 +398,33 @@ class QuantBottleneckDW(nn.Module):
         else:
             return self.cv2(self.cv1(x))
 
+class BottleneckDW(nn.Module):
+    # Bottleneck with depthwise separable convolution
+    def __init__(self, c1, c2, shortcut=True, e=0.5):
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = DWSConv(c_, c2, 3, 1)
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+
+class C3DW(nn.Module):
+    # CSP Bottleneck with 3 convolutions using depthwise (float, same structure as QuantC3DW)
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c1, c_, 1, 1)
+        self.cv3 = Conv(2 * c_, c2, 1)
+        self.m = nn.Sequential(*[BottleneckDW(c_, c_, shortcut, e=1.0) for _ in range(n)])
+
+    def forward(self, x):
+        return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
+
+
 class BottleneckCSP(nn.Module):
     # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):  # ch_in, ch_out, number, shortcut, groups, expansion
