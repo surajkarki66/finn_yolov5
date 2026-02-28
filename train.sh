@@ -127,10 +127,11 @@
 ## YOLOv5
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/no-skip/yolov5n-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
-
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/original/yolov5n.yaml --weights ./yolov5u.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/original/yolov5n-dw.yaml --weights ./yolov5u.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratc>
 
 #########################################################
 # Finetuning Quantized Models
 #########################################################
-## YOLOv1-tiny
-python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v1/conv/4w4a/yolov1-tiny-quant.yaml --weights ./best.pt --batch-size 128 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+## YOLOv3-tiny
+python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-quant.yaml --weights ./best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
