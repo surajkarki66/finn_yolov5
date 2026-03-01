@@ -1,9 +1,9 @@
-python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp11/weights/best.pt --imgsz 416 --task test
+#python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp2/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp4/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp9/weights/best.pt --imgsz 416 --task test
-#python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp13/weights/best.pt --imgsz 416 --task test
+python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp14/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp7/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp8/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --imgsz 416 --task test

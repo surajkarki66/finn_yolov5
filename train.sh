@@ -125,13 +125,21 @@
 
 
 ## YOLOv5
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n.yaml --weights ./yolov5u.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/no-skip/yolov5n-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/fp_model/original/yolov5n.yaml --weights ./yolov5u.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
-#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/original/yolov5n-dw.yaml --weights ./yolov5u.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratc>
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/fp_model/original/yolov5n-dw.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 
 #########################################################
 # Finetuning Quantized Models
 #########################################################
 ## YOLOv3-tiny
-python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-quant.yaml --weights ./best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-quant.yaml --weights ./best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+
+
+##YOLOv3
+python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/4w4a/no-skip/yolov3n-quant-no-skip.yaml --weights ./yolov3.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+
+## YOLOv5
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/4w4a/no-skip/yolov5n-quant-no-skip-dw.yaml --weights ./best.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+
