@@ -265,7 +265,6 @@ class Bottleneck(nn.Module):
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
-
 class QuantBottleneck(nn.Module):
     def __init__(self, c1, c2, shortcut=True, weight_bit_width=4, act_bit_width=4, g=1, e=0.5):
         super().__init__()
@@ -273,20 +272,11 @@ class QuantBottleneck(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        
-        if self.add:
-            # Add ReLU after addition
-            self.relu_out = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
+        self.quant_identity = QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         if self.add:
-            out = self.cv2(self.cv1(x))
-            out = out + x
-            out = self.relu_out(out)
-            return out
+            return self.quant_identity(x) + self.cv2(self.cv1(x))
         else:
             return self.cv2(self.cv1(x))
 
@@ -380,20 +370,11 @@ class QuantBottleneckDW(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantDWConv(c_, c2, 3, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        
-        if self.add:
-            # Add ReLU after addition
-            self.relu_out = qnn.QuantReLU(
-                act_quant=CommonUintActQuant,
-                bit_width=act_bit_width,
-                return_quant_tensor=True)
+        self.quant_identity = QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         if self.add:
-            out = self.cv2(self.cv1(x))
-            out = out + x
-            out = self.relu_out(out)
-            return out
+            return self.quant_identity(x) + self.cv2(self.cv1(x))
         else:
             return self.cv2(self.cv1(x))
 
