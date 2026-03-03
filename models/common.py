@@ -272,7 +272,7 @@ class QuantBottleneck(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantConv(c_, c2, 3, 1, g=1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        self.quant_identity = QuantIdentity(bit_width=weight_bit_width)
+        self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         if self.add:
@@ -370,7 +370,7 @@ class QuantBottleneckDW(nn.Module):
         self.cv1 = QuantConv(c1, c_, 1, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.cv2 = QuantDWConv(c_, c2, 3, 1, weight_bit_width=weight_bit_width, act_bit_width=act_bit_width)
         self.add = shortcut and c1 == c2
-        self.quant_identity = QuantIdentity(bit_width=weight_bit_width)
+        self.quant_identity = qnn.QuantIdentity(bit_width=weight_bit_width)
 
     def forward(self, x):
         if self.add:
