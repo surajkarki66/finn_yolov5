@@ -15,6 +15,7 @@
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3tiny/conv/4w4a/yolov3-tiny-quant-modified.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/yolov3.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/4w4a/original/yolov3-quant.yaml --weights '' --batch-size 16 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/8w8a/original/yolov3-quant.yaml --weights '' -batch-size 16 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/4w4a/original/yolov5s-quant.yaml --weights '' --batch-size 16 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/4w4a/original/yolov5m-quant.yaml --weights '' --batch-size 16 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/4w4a/original/yolov5n-quant.yaml --weights '' --batch-size 16 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
