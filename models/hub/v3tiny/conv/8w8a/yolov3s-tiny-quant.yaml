@@ -10,7 +10,7 @@ anchors:
   - [81,82, 135,169, 344,319]  # P5/32
 
 bit_width: 
-  - [8, 8, 8, 8]  # in_weight_bit_width,  weight_bit_width, act_bit_width, out_weight_bit_width
+  - [8, 8, 8, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
 
 # YOLOv3-tiny backbone
 backbone:
