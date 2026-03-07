@@ -149,3 +149,14 @@ python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/4w4a/nor
 ## YOLOv5
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/4w4a/no-skip/yolov5n-quant-no-skip.yaml --weights ./yolov5n.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/dws/4w4a/no-skip/yolov5n-quant-no-skip-dw.yaml --weights ./best.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml
+
+
+#########################################################
+# Hybrid YOLO5 Experimental Models
+#########################################################
+python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-2w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+# python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-3w5a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+# python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-4w2a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+# python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+# python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-6w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+# python3 train.py --data data/coco.yaml --cfg models/hub/v5/dws/exp/yolov5n-quant-8w3a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
