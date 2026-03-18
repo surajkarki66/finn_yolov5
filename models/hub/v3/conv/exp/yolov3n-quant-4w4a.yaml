@@ -1,0 +1,55 @@
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+
+# Parameters
+nc: 1  # number of classes
+use_hardtanh: False
+depth_multiple: 0.33  # model depth multiple
+width_multiple: 0.25  # layer channel multiple
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32
+
+bit_width:
+  - [8, 4, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width (4w4a)
+
+# darknet53 backbone
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]], # 0
+   [-1, 1, QuantConv, [64, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 1-P1/2
+   [-1, 1, QuantBottleneck, [64, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [128, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 3-P2/4
+   [-1, 2, QuantBottleneck, [128, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [256, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 5-P3/8
+   [-1, 8, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 7-P4/16
+   [-1, 8, QuantBottleneck, [512, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 2, None, 1, True, True, weight_bit_width, act_bit_width]],  # 9-P5/32
+   [-1, 4, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],                    # 10
+  ]
+
+# YOLOv3 head
+head:
+  [[-1, 1, QuantBottleneck, [1024, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 15 (P5/32-large)
+
+   [-2, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 8], 1, Concat, [1]],  # cat backbone P4
+   [-1, 1, QuantBottleneck, [512, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantBottleneck, [512, False, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # 22 (P4/16-medium)
+
+   [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P3
+   [-1, 1, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],
+   [-1, 2, QuantBottleneck, [256, False, weight_bit_width, act_bit_width]],  # 27 (P3/8-small)
+
+   [[27, 22, 15], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],   # Detect(P3, P4, P5)
+  ]
