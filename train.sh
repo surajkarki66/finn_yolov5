@@ -166,7 +166,7 @@
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-3w5a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-4w2a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-6w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-6w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-8w3a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # v3tiny
@@ -192,3 +192,14 @@ python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v5/conv/exp/yol
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/exp/yolov3n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/exp/yolov3n-quant-6w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data data/hpd2_modified.yaml --cfg models/hub/v3/conv/exp/yolov3n-quant-8w3a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# COCO-YOLOv3-tiny
+#python3 train.py --data coco.yaml --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-quant.yaml --weights '' --batch-size 32 --epochs 300 --hyp data/hyps/hyp.scratch.yaml
+#python3 train.py --data coco.yaml --cfg models/hub/v3tiny/conv/8w8a/yolov3n-tiny-quant.yaml --weights '' --batch-size 32 --epochs 300 --hyp data/hyps/hyp.scratch.yaml
+
+# COCO-YOLOv5
+#python3 train.py --data coco.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# VOC-YOLOv5
+python3 train.py --data VOC.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+

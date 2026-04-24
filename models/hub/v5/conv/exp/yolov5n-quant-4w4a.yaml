@@ -2,7 +2,7 @@
 # Conv exp, no-skip (C3 shortcut=False)
 
 # Parameters
-nc: 1  # number of classes
+nc: 20  # number of classes
 use_hardtanh: False  # enable hardtanh
 depth_multiple: 0.33  # model depth multiple
 width_multiple: 0.25  # layer channel multiple
