@@ -1,0 +1,38 @@
+# YOLOv3-tiny with oriented bounding box head
+nc: 1
+use_hardtanh: False
+depth_multiple: 0.33
+width_multiple: 0.25
+anchors:
+  - [10,14, 23,27, 37,58]  # P4/16
+  - [81,82, 135,169, 344,319]  # P5/32
+
+bit_width:
+  - [8, 4, 4, 8]
+
+backbone:
+  [[-1, 1, QuantConv, [16, 3, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],
+   [-1, 1, QuantConv, [32, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],
+   [-1, 1, QuantConv, [64, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],
+   [-1, 1, QuantConv, [128, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],
+   [-1, 1, QuantConv, [256, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [2, 2, 0]],
+   [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.MaxPool2d, [3, 1, 1]],
+  ]
+
+head:
+  [[-1, 1, QuantConv, [1024, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [256, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, QuantConv, [512, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-2, 1, QuantConv, [128, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [[-1, 8], 1, Concat, [1]],
+   [-1, 1, QuantConv, [256, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
+
+   [[18, 14], 1, DetectOBB, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],
+  ]

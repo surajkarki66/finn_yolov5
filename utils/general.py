@@ -710,6 +710,55 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
     return output
 
 
+def scale_coords_xywh(img1_shape, coords, img0_shape, ratio_pad=None):
+    """Rescale normalized xywh (center) from letterboxed img1_shape to img0_shape (native). coords (N,4+) tensor."""
+    if ratio_pad is None:
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+    coords[:, 0] -= pad[0]
+    coords[:, 1] -= pad[1]
+    coords[:, :4] /= gain
+    coords[:, 0].clamp_(0, img0_shape[1])
+    coords[:, 1].clamp_(0, img0_shape[0])
+    coords[:, 2].clamp_(0, img0_shape[1])
+    coords[:, 3].clamp_(0, img0_shape[0])
+    return coords
+
+
+def non_max_suppression_obb(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False,
+                            multi_label=False, max_det=300):
+    """NMS for DetectOBB outputs: (B, n, 6+nc) with x,y,w,h (pixels), angle, obj, cls."""
+    from utils.obb_metrics import nms_rotated
+
+    bs = prediction.shape[0]
+    xc = prediction[..., 5] > conf_thres
+    output = [torch.zeros((0, 7), device=prediction.device)] * bs
+    for xi, x in enumerate(prediction):
+        x = x[xc[xi]]
+        if not x.shape[0]:
+            continue
+        box, cls = x[:, :5], x[:, 6:]
+        cls = cls * x[:, 5:6]
+        conf, j = cls.max(1, keepdim=True)
+        x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
+        if classes is not None:
+            x = x[(x[:, 6:7] == torch.tensor(classes, device=x.device)).any(1)]
+        if not x.shape[0]:
+            continue
+        c = x[:, 6:7] * (0 if agnostic else 7680)
+        boxes = x[:, :5].clone()
+        boxes[:, 0] += c.squeeze(-1)
+        boxes[:, 1] += c.squeeze(-1)
+        scores = x[:, 5]
+        keep = nms_rotated(boxes, scores, iou_thres)
+        keep = keep[:max_det]
+        output[xi] = x[keep]
+    return output
+
+
 def strip_optimizer(f='best.pt', s=''):  # from utils.general import *; strip_optimizer()
     # Strip optimizer from 'f' to finalize training, optionally save as 's'
     x = torch.load(f, map_location=torch.device('cpu'))

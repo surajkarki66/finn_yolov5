@@ -7,6 +7,7 @@ import glob
 import hashlib
 import json
 import logging
+import math
 import os
 import random
 import shutil
@@ -93,7 +94,8 @@ def exif_transpose(image):
 
 
 def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=None, augment=False, cache=False, pad=0.0,
-                      rect=False, rank=-1, workers=8, image_weights=False, quad=False, prefix='', binary=False):
+                      rect=False, rank=-1, workers=8, image_weights=False, quad=False, prefix='', binary=False,
+                      obb=False):
     # Make sure only the first process in DDP process the dataset first, and the following others can use the cache
     with torch_distributed_zero_first(rank):
         dataset = LoadImagesAndLabels(path, imgsz, batch_size,
@@ -106,7 +108,8 @@ def create_dataloader(path, imgsz, batch_size, stride, single_cls=False, hyp=Non
                                       pad=pad,
                                       image_weights=image_weights,
                                       prefix=prefix,
-                                      binary=binary)
+                                      binary=binary,
+                                      obb=obb)
 
     batch_size = min(batch_size, len(dataset))
     nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, workers])  # number of workers
@@ -376,16 +379,17 @@ def img2label_paths(img_paths):
 
 class LoadImagesAndLabels(Dataset):
     # YOLOv5 train_loader/val_loader, loads images and labels for training and validation
-    cache_version = 0.6  # dataset labels *.cache version
+    cache_version = 0.7  # dataset labels *.cache version (0.7: OBB 6/9-col labels)
 
     def __init__(self, path, img_size=640, batch_size=16, augment=False, hyp=None, rect=False, image_weights=False,
-                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='', binary=False):
+                 cache_images=False, single_cls=False, stride=32, pad=0.0, prefix='', binary=False, obb=False):
         self.img_size = img_size
+        self.obb = obb
         self.augment = augment and (not binary)
         self.hyp = hyp
         self.image_weights = image_weights
         self.rect = False if image_weights else rect
-        self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
+        self.mosaic = self.augment and not self.rect and not obb  # mosaic unsupported with OBB
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
         self.path = path
@@ -512,7 +516,7 @@ class LoadImagesAndLabels(Dataset):
         nm, nf, ne, nc, msgs = 0, 0, 0, 0, []  # number missing, found, empty, corrupt, messages
         desc = f"{prefix}Scanning '{path.parent / path.stem}' images and labels..."
         with Pool(NUM_THREADS) as pool:
-            pbar = tqdm(pool.imap(verify_image_label, zip(self.img_files, self.label_files, repeat(prefix))),
+            pbar = tqdm(pool.imap(verify_image_label, zip(self.img_files, self.label_files, repeat(prefix), repeat(self.obb))),
                         desc=desc, total=len(self.img_files))
             for im_file, l, shape, segments, nm_f, nf_f, ne_f, nc_f, msg in pbar:
                 nm += nm_f
@@ -576,9 +580,14 @@ class LoadImagesAndLabels(Dataset):
 
             labels = self.labels[index].copy()
             if labels.size:  # normalized xywh to pixel xyxy format
-                labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
+                if self.obb:
+                    ang = labels[:, 5:6]
+                    bb = xywhn2xyxy(labels[:, 1:5], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
+                    labels = np.concatenate([labels[:, :1], bb, ang], axis=1)
+                else:
+                    labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
 
-            if self.augment:
+            if self.augment and not self.obb:
                 img, labels = random_perspective(img, labels,
                                                  degrees=hyp['degrees'],
                                                  translate=hyp['translate'],
@@ -588,24 +597,29 @@ class LoadImagesAndLabels(Dataset):
 
         nl = len(labels)  # number of labels
         if nl:
-            labels[:, 1:5] = xyxy2xywhn(labels[:, 1:5], w=img.shape[1], h=img.shape[0], clip=True, eps=1E-3)
+            if self.obb:
+                bb = xyxy2xywhn(labels[:, 1:5], w=img.shape[1], h=img.shape[0], clip=True, eps=1E-3)
+                labels = np.concatenate([labels[:, :1], bb, labels[:, 5:6]], axis=1)
+            else:
+                labels[:, 1:5] = xyxy2xywhn(labels[:, 1:5], w=img.shape[1], h=img.shape[0], clip=True, eps=1E-3)
 
         if self.augment:
-            # Albumentations
-            img, labels = self.albumentations(img, labels)
-            nl = len(labels)  # update after albumentations
+            # Albumentations expect cls + xyxy/xywh only (4 coords); skip for OBB (6 cols).
+            if not self.obb:
+                img, labels = self.albumentations(img, labels)
+            nl = len(labels)
 
             # HSV color-space
             augment_hsv(img, hgain=hyp['hsv_h'], sgain=hyp['hsv_s'], vgain=hyp['hsv_v'])
 
-            # Flip up-down
-            if random.random() < hyp['flipud']:
+            # Flip up-down (disabled for OBB to avoid angle/geometry drift in AABB-style aug path)
+            if (not self.obb) and random.random() < hyp['flipud']:
                 img = np.flipud(img)
                 if nl:
                     labels[:, 2] = 1 - labels[:, 2]
 
-            # Flip left-right
-            if random.random() < hyp['fliplr']:
+            # Flip left-right (disabled for OBB to avoid angle/geometry drift in AABB-style aug path)
+            if (not self.obb) and random.random() < hyp['fliplr']:
                 img = np.fliplr(img)
                 if nl:
                     labels[:, 1] = 1 - labels[:, 1]
@@ -613,7 +627,8 @@ class LoadImagesAndLabels(Dataset):
             # Cutouts
             # labels = cutout(img, labels, p=0.5)
 
-        labels_out = torch.zeros((nl, 6))
+        ncols = 7 if self.obb else 6
+        labels_out = torch.zeros((nl, ncols))
         if nl:
             labels_out[:, 1:] = torch.from_numpy(labels)
         
@@ -895,48 +910,82 @@ def autosplit(path='../datasets/coco128/images', weights=(0.9, 0.1, 0.0), annota
 
 
 def verify_image_label(args):
-    # Verify one image-label pair
-    im_file, lb_file, prefix = args
-    nm, nf, ne, nc, msg, segments = 0, 0, 0, 0, '', []  # number (missing, found, empty, corrupt), message, segments
+    # Verify one image-label pair. args: (im_file, lb_file, prefix) or (..., obb)
+    if len(args) == 4:
+        im_file, lb_file, prefix, obb = args
+    else:
+        im_file, lb_file, prefix = args
+        obb = False
+    nm, nf, ne, nc, msg, segments = 0, 0, 0, 0, '', []
     try:
-        # verify images
         im = Image.open(im_file)
-        im.verify()  # PIL verify
-        shape = exif_size(im)  # image size
+        im.verify()
+        shape = exif_size(im)
         assert (shape[0] > 9) & (shape[1] > 9), f'image size {shape} <10 pixels'
         assert im.format.lower() in IMG_FORMATS, f'invalid image format {im.format}'
         if im.format.lower() in ('jpg', 'jpeg'):
             with open(im_file, 'rb') as f:
                 f.seek(-2, 2)
-                if f.read() != b'\xff\xd9':  # corrupt JPEG
+                if f.read() != b'\xff\xd9':
                     ImageOps.exif_transpose(Image.open(im_file)).save(im_file, 'JPEG', subsampling=0, quality=100)
                     msg = f'{prefix}WARNING: {im_file}: corrupt JPEG restored and saved'
 
-        # verify labels
+        im_h, im_w = float(shape[0]), float(shape[1])
         if os.path.isfile(lb_file):
-            nf = 1  # label found
+            nf = 1
             with open(lb_file, 'r') as f:
-                l = [x.split() for x in f.read().strip().splitlines() if len(x)]
-                if any([len(x) > 8 for x in l]):  # is segment
-                    classes = np.array([x[0] for x in l], dtype=np.float32)
-                    segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]  # (cls, xy1...)
-                    l = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)  # (cls, xywh)
-                l = np.array(l, dtype=np.float32)
+                raw = [x.split() for x in f.read().strip().splitlines() if len(x)]
+                l = []
+                if raw:
+                    if obb and all(len(x) == 9 for x in raw):
+                        rows = []
+                        for x in raw:
+                            cls = float(x[0])
+                            pts = np.array(x[1:9], dtype=np.float32).reshape(4, 2)
+                            pts[:, 0] *= im_w
+                            pts[:, 1] *= im_h
+                            (cx, cy), (w, h), ang_deg = cv2.minAreaRect(pts)
+                            ang = ang_deg * math.pi / 180.0
+                            if w < h:
+                                w, h = h, w
+                                ang += math.pi / 2
+                            rows.append([cls, cx / im_w, cy / im_h, w / im_w, h / im_h, ang])
+                        l = np.array(rows, dtype=np.float32)
+                        segments = []
+                    elif any(len(x) > 9 for x in raw):
+                        classes = np.array([x[0] for x in raw], dtype=np.float32)
+                        segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in raw]
+                        l = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)
+                    elif any(len(x) > 8 for x in raw):
+                        classes = np.array([x[0] for x in raw], dtype=np.float32)
+                        segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in raw]
+                        l = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)
+                    else:
+                        l = np.array(raw, dtype=np.float32)
+                        segments = []
+                else:
+                    l = np.array(raw, dtype=np.float32)
             nl = len(l)
             if nl:
-                assert l.shape[1] == 5, f'labels require 5 columns, {l.shape[1]} columns detected'
-                assert (l >= 0).all(), f'negative label values {l[l < 0]}'
-                assert (l[:, 1:] <= 1).all(), f'non-normalized or out of bounds coordinates {l[:, 1:][l[:, 1:] > 1]}'
-                l = np.unique(l, axis=0)  # remove duplicate rows
+                if obb:
+                    assert l.shape[1] == 6, f'OBB labels require 6 columns (cls cx cy w h angle) or 9 (corners), got {l.shape[1]}'
+                    if l[:, 5].max() > 2.0:
+                        l[:, 5] = l[:, 5] * (math.pi / 180.0)
+                else:
+                    assert l.shape[1] == 5, f'labels require 5 columns, {l.shape[1]} columns detected'
+                assert (l[:, 0] >= 0).all() and (l[:, 1:5] >= 0).all(), f'negative label values {l[l < 0]}'
+                assert (l[:, 1:5] <= 1).all(), f'non-normalized or out of bounds coordinates {l[:, 1:5][l[:, 1:5] > 1]}'
+                l = np.unique(l, axis=0)
                 if len(l) < nl:
-                    segments = np.unique(segments, axis=0)
+                    if segments:
+                        segments = np.unique(segments, axis=0)
                     msg = f'{prefix}WARNING: {im_file}: {nl - len(l)} duplicate labels removed'
             else:
-                ne = 1  # label empty
-                l = np.zeros((0, 5), dtype=np.float32)
+                ne = 1
+                l = np.zeros((0, 6 if obb else 5), dtype=np.float32)
         else:
-            nm = 1  # label missing
-            l = np.zeros((0, 5), dtype=np.float32)
+            nm = 1
+            l = np.zeros((0, 6 if obb else 5), dtype=np.float32)
         return im_file, l, shape, segments, nm, nf, ne, nc, msg
     except Exception as e:
         nc = 1

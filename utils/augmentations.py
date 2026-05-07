@@ -142,7 +142,7 @@ def random_perspective(im, targets=(), segments=(), degrees=10, translate=.1, sc
 
     # Rotation and Scale
     R = np.eye(3)
-    a = random.uniform(-degrees, degrees)
+    a = random.uniform(-degrees, degrees)  # degrees; also applied to OBB angle column when present
     # a += random.choice([-180, -90, 0, 90])  # add 90deg rotations to small rotations
     s = random.uniform(1 - scale, 1 + scale)
     # s = 2 ** random.uniform(-scale, scale)
@@ -207,6 +207,8 @@ def random_perspective(im, targets=(), segments=(), degrees=10, translate=.1, sc
         i = box_candidates(box1=targets[:, 1:5].T * s, box2=new.T, area_thr=0.01 if use_segments else 0.10)
         targets = targets[i]
         targets[:, 1:5] = new[i]
+        if targets.shape[1] >= 6:
+            targets[:, 5] = targets[:, 5] + a * math.pi / 180.0
 
     return im, targets
 

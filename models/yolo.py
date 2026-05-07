@@ -117,7 +117,6 @@ class Detect(nn.Module):
             return outputs
         return (torch.cat(z, 1), outputs)
 
-
     def _make_grid(self, nx=20, ny=20, i=0):
         d = self.anchors[i].device
         yv, xv = torch.meshgrid([torch.arange(ny).to(d), torch.arange(nx).to(d)])
@@ -125,6 +124,71 @@ class Detect(nn.Module):
         anchor_grid = (self.anchors[i].clone() * self.stride[i]) \
             .view((1, self.na, 1, 1, 2)).expand((1, self.na, ny, nx, 2)).float()
         return grid, anchor_grid
+
+
+class DetectOBB(Detect):
+    """YOLO anchor head with one angle channel (YOLOv8-OBB style decode: (sigmoid - 0.25) * pi).
+
+    Per-anchor layout (training tensor): x, y, w, h, angle_logit, obj, cls (nc) -> no = nc + 6.
+    Inference output: xy (pixels), wh (pixels), angle (rad), obj (prob), cls (prob).
+    """
+
+    def __init__(self, nc=80, anchors=(), ch=(), in_conv=True, use_hardtanh=False, inplace=True, weight_bit_width=None):
+        nn.Module.__init__(self)
+        self.nc = nc
+        self.no = nc + 6
+        self.nl = len(anchors)
+        self.na = len(anchors[0]) // 2
+        self.grid = [torch.zeros(1)] * self.nl
+        self.anchor_grid = [torch.zeros(1)] * self.nl
+        self.register_buffer('anchors', torch.tensor(anchors).float().view(self.nl, -1, 2))
+        self.in_conv = in_conv
+        self.use_hardtanh = use_hardtanh
+        if weight_bit_width is not None:
+            self.m = nn.ModuleList(qnn.QuantConv2d(
+                in_channels=x,
+                out_channels=self.no * self.na,
+                kernel_size=1,
+                stride=1,
+                bias=False,
+                weight_quant=CommonIntWeightPerChannelQuant,
+                weight_bit_width=weight_bit_width) for x in ch)
+        else:
+            self.m = nn.ModuleList(nn.Conv2d(x, self.no * self.na, 1) for x in ch)
+        self.inplace = inplace
+
+    def forward(self, x):
+        z = []
+        outputs = []
+        for i in range(self.nl):
+            xi = x[i]
+            if self.in_conv:
+                xi = self.m[i](xi)
+            bs, _, ny, nx = xi.shape
+            if not self.finn_export:
+                xi = xi.view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+                if not self.training:
+                    self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
+                    y = xi
+                    if not self.use_hardtanh:
+                        y = y.sigmoid()
+                        xy = (y[..., 0:2] * 2.0 - 0.5 + self.grid[i]) * self.stride[i]
+                        wh = (y[..., 2:4] * 2.0) ** 2 * self.anchor_grid[i]
+                        ang = (y[..., 4] - 0.25) * math.pi
+                        y_out = torch.cat((xy, wh, ang.unsqueeze(-1), y[..., 5:6], y[..., 6:]), dim=-1)
+                    else:
+                        xy = (y[..., 0:2] + 1.0 - 0.5 + self.grid[i]) * self.stride[i]
+                        wh = (y[..., 2:4] + 1.0) ** 2 * self.anchor_grid[i]
+                        ang_raw = (y[..., 4].clamp(-1, 1) + 1.0) * 0.5
+                        ang = (ang_raw - 0.25) * math.pi
+                        y_out = torch.cat((xy, wh, ang.unsqueeze(-1), y[..., 5:6], y[..., 6:]), dim=-1)
+                    z.append(y_out.view(bs, -1, self.no))
+
+            outputs.append(xi)
+
+        if self.training or self.finn_export:
+            return outputs
+        return (torch.cat(z, 1), outputs)
 
 
 class Model(nn.Module):
@@ -249,9 +313,13 @@ class Model(nn.Module):
         m = self.model[-1]  # Detect() module
         for mi, s in zip(m.m, m.stride):  # from
             if mi.bias is not None:
-                b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
-                b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
-                b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+                b = mi.bias.view(m.na, -1)
+                if isinstance(m, DetectOBB):
+                    b.data[:, 5] += math.log(8 / (640 / s) ** 2)  # obj
+                    b.data[:, 6:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+                else:
+                    b.data[:, 4] += math.log(8 / (640 / s) ** 2)  # obj (8 objects per 640 image)
+                    b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
                 mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def _print_biases(self):
@@ -314,7 +382,8 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         # in_weight_bit_width, in_act_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width = d['bit_width'][0]
         in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width = d['bit_width'][0]
     na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
-    no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
+    uses_obb = any(isinstance(x[2], str) and x[2] == 'DetectOBB' for x in d['backbone'] + d['head'])
+    no = na * (nc + 6) if uses_obb else na * (nc + 5)  # DetectOBB: +1 angle channel per anchor
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
@@ -341,14 +410,14 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             args = [ch[f]]
         elif m is Concat:
             c2 = sum([ch[x] for x in f])
-        elif m is Detect:
+        elif m in (Detect, DetectOBB):
             if len(args) == 4 or len(args) == 6:
                 args.insert(2, [ch[x] for x in f])
             else:
                 args.append([ch[x] for x in f])
             if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
-                
+            c2 = max(ch[x] for x in f) if isinstance(f, (list, tuple)) else ch[f]
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
         elif m is Expand:

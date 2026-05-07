@@ -3,9 +3,13 @@
 Loss functions
 """
 
+import math
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
+from models.yolo import DetectOBB
 from utils.metrics import bbox_iou
 from utils.torch_utils import is_parallel
 
@@ -108,6 +112,7 @@ class ComputeLoss:
             BCEcls, BCEobj = FocalLoss(BCEcls, g), FocalLoss(BCEobj, g)
 
         det = model.module.model[-1] if is_parallel(model) else model.model[-1]  # Detect() module
+        self.obb = isinstance(det, DetectOBB)
         self.balance = {3: [4.0, 1.0, 0.4]}.get(det.nl, [4.0, 1.0, 0.25, 0.06, .02])  # P3-P7
         self.ssi = list(det.stride).index(16) if autobalance else 0  # stride 16 index
         self.BCEcls, self.BCEobj, self.gr, self.hyp, self.autobalance = BCEcls, BCEobj, 1.0, h, autobalance
@@ -116,8 +121,15 @@ class ComputeLoss:
 
     def __call__(self, p, targets):  # predictions, targets, model
         device = targets.device
-        lcls, lbox, lobj = torch.zeros(1, device=device), torch.zeros(1, device=device), torch.zeros(1, device=device)
-        tcls, tbox, indices, anchors = self.build_targets(p, targets)  # targets
+        lcls = torch.zeros(1, device=device)
+        lbox = torch.zeros(1, device=device)
+        lobj = torch.zeros(1, device=device)
+        langle = torch.zeros(1, device=device)
+        if self.obb:
+            tcls, tbox, tangles, indices, anchors = self.build_targets_obb(p, targets)
+        else:
+            tcls, tbox, indices, anchors = self.build_targets(p, targets)
+            tangles = None
 
         # Losses
         for i, pi in enumerate(p):  # layer index, layer predictions
@@ -135,6 +147,10 @@ class ComputeLoss:
                 iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
                 lbox += (1.0 - iou).mean()  # iou loss
 
+                if self.obb:
+                    p_ang = (ps[:, 4].sigmoid() - 0.25) * math.pi
+                    langle += F.smooth_l1_loss(p_ang, tangles[i], reduction='mean')
+
                 # Objectness
                 score_iou = iou.detach().clamp(0).type(tobj.dtype)
                 if self.sort_obj_iou:
@@ -143,16 +159,14 @@ class ComputeLoss:
                 tobj[b, a, gj, gi] = (1.0 - self.gr) + self.gr * score_iou  # iou ratio
 
                 # Classification
+                cls_off = 6 if self.obb else 5
                 if self.nc > 1:  # cls loss (only if multiple classes)
-                    t = torch.full_like(ps[:, 5:], self.cn, device=device)  # targets
+                    t = torch.full_like(ps[:, cls_off:], self.cn, device=device)  # targets
                     t[range(n), tcls[i]] = self.cp
-                    lcls += self.BCEcls(ps[:, 5:], t)  # BCE
+                    lcls += self.BCEcls(ps[:, cls_off:], t)  # BCE
 
-                # Append targets to text file
-                # with open('targets.txt', 'a') as file:
-                #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
-
-            obji = self.BCEobj(pi[..., 4], tobj)
+            obj_ch = 5 if self.obb else 4
+            obji = self.BCEobj(pi[..., obj_ch], tobj)
             lobj += obji * self.balance[i]  # obj loss
             if self.autobalance:
                 self.balance[i] = self.balance[i] * 0.9999 + 0.0001 / obji.detach().item()
@@ -162,9 +176,13 @@ class ComputeLoss:
         lbox *= self.hyp['box']
         lobj *= self.hyp['obj']
         lcls *= self.hyp['cls']
+        langle *= self.hyp.get('angle', 0.1)
         bs = tobj.shape[0]  # batch size
 
-        return (lbox + lobj + lcls) * bs, torch.cat((lbox, lobj, lcls)).detach()
+        total = lbox + lobj + lcls + (langle if self.obb else 0.0)
+        if self.obb:
+            return total * bs, torch.cat((lbox, lobj, lcls, langle)).detach()
+        return total * bs, torch.cat((lbox, lobj, lcls)).detach()
 
     def build_targets(self, p, targets):
         # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
@@ -220,3 +238,60 @@ class ComputeLoss:
             tcls.append(c)  # class
 
         return tcls, tbox, indices, anch
+
+    def build_targets_obb(self, p, targets):
+        """Same as build_targets but targets are (N, 7): image, class, xywh, angle (rad)."""
+        if targets.shape[1] != 7:
+            raise RuntimeError(
+                f"OBB targets must have 7 columns [img, cls, x, y, w, h, angle], got {targets.shape[1]}. "
+                "Make sure data.yaml has obb: true and clear stale labels.cache files."
+            )
+
+        na, nt = self.na, targets.shape[0]
+        tcls, tbox, tangles, indices, anch = [], [], [], [], []
+        gain = torch.ones(8, device=targets.device).long()
+        ai = torch.arange(na, device=targets.device).float().view(na, 1).repeat(1, nt)
+        targets = torch.cat((targets.repeat(na, 1, 1), ai[:, :, None]), 2)
+
+        g = 0.5
+        off = torch.tensor([[0, 0],
+                            [1, 0], [0, 1], [-1, 0], [0, -1],
+                            ], device=targets.device).float() * g
+
+        for i in range(self.nl):
+            anchors = self.anchors[i]
+            gain[2:6] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]
+            gain[6] = 1  # angle: not scaled to grid
+
+            t = targets * gain
+            if nt:
+                r = t[:, :, 4:6] / anchors[:, None]
+                j = torch.max(r, 1. / r).max(2)[0] < self.hyp['anchor_t']
+                t = t[j]
+
+                gxy = t[:, 2:4]
+                gxi = gain[[2, 3]] - gxy
+                j, k = ((gxy % 1. < g) & (gxy > 1.)).T
+                l, m = ((gxi % 1. < g) & (gxi > 1.)).T
+                j = torch.stack((torch.ones_like(j), j, k, l, m))
+                t = t.repeat((5, 1, 1))[j]
+                offsets = (torch.zeros_like(gxy)[None] + off[:, None])[j]
+            else:
+                t = targets[0]
+                offsets = 0
+
+            b, c = t[:, :2].long().T
+            gxy = t[:, 2:4]
+            gwh = t[:, 4:6]
+            tang = t[:, 6]
+            gij = (gxy - offsets).long()
+            gi, gj = gij.T
+
+            a = t[:, 7].long()
+            indices.append((b, a, gj.clamp_(0, gain[3] - 1), gi.clamp_(0, gain[2] - 1)))
+            tbox.append(torch.cat((gxy - gij, gwh), 1))
+            tangles.append(tang)
+            anch.append(anchors[a])
+            tcls.append(c)
+
+        return tcls, tbox, tangles, indices, anch

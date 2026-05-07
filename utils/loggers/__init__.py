@@ -109,11 +109,20 @@ class Loggers():
 
     def on_fit_epoch_end(self, vals, epoch, best_fitness, fi):
         # Callback runs at the end of each fit (train+val) epoch
-        x = {k: v for k, v in zip(self.keys, vals)}  # dict
+        if len(vals) != len(self.keys):
+            # Fallback for custom heads with extra losses/metrics.
+            if len(vals) > len(self.keys):
+                extra = [f'custom/{i}' for i in range(len(vals) - len(self.keys))]
+                keys = self.keys + extra
+            else:
+                keys = self.keys[:len(vals)]
+        else:
+            keys = self.keys
+        x = {k: v for k, v in zip(keys, vals)}  # dict
         if self.csv:
             file = self.save_dir / 'results.csv'
             n = len(x) + 1  # number of cols
-            s = '' if file.exists() else (('%20s,' * n % tuple(['epoch'] + self.keys)).rstrip(',') + '\n')  # add header
+            s = '' if file.exists() else (('%20s,' * n % tuple(['epoch'] + keys)).rstrip(',') + '\n')  # add header
             with open(file, 'a') as f:
                 f.write(s + ('%20.5g,' * n % tuple([epoch] + vals)).rstrip(',') + '\n')
 

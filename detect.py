@@ -25,7 +25,8 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 from models.experimental import attempt_load
 from utils.datasets import LoadImages, LoadStreams
 from utils.general import apply_classifier, check_img_size, check_imshow, check_requirements, check_suffix, colorstr, \
-    increment_path, non_max_suppression, print_args, save_one_box, scale_coords, set_logging, \
+    increment_path, non_max_suppression, non_max_suppression_obb, print_args, save_one_box, scale_coords, \
+    scale_coords_xywh, set_logging, \
     strip_optimizer, xyxy2xywh, xyxy2xywhtb
 from utils.plots import Annotator, colors
 from utils.torch_utils import load_classifier, select_device, time_sync
@@ -83,6 +84,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         model = torch.jit.load(w) if 'torchscript' in w else attempt_load(weights, map_location=device)
         stride = int(model.stride.max())  # model stride
         names = model.module.names if hasattr(model, 'module') else model.names  # get class names
+        det = model.module.model[-1] if hasattr(model, 'module') else model.model[-1]
+        obb = bool(getattr(det, 'no', 0) == (len(names) + 6))
         if half:
             model.half()  # to FP16
         if classify:  # second-stage classifier
@@ -119,6 +122,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
     # Dataloader
+    if 'obb' not in locals():
+        obb = False
     if webcam:
         view_img = check_imshow()
         cudnn.benchmark = True  # set True to speed up constant image size inference
@@ -181,7 +186,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         dt[1] += t3 - t2
 
         # NMS
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
+        pred = non_max_suppression_obb(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det) if obb \
+            else non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, max_det=max_det)
         dt[2] += time_sync() - t3
 
         # Second-stage classifier (optional)
@@ -218,17 +224,33 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                     with open(txt_path + '.txt', 'a') as f:
                         f.write('%d' % len(det) + '\n')
                 # Rescale boxes from img_size to im0 size
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
+                if obb:
+                    scale_coords_xywh(img.shape[2:], det[:, :4], im0.shape)
+                else:
+                    det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
                 # Print results
-                for c in det[:, -1].unique():
-                    n = (det[:, -1] == c).sum()  # detections per class
+                cls_col = 6 if obb else -1
+                for c in det[:, cls_col].unique():
+                    n = (det[:, cls_col] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
-                for *xyxy, conf, cls in reversed(det):
+                for d in reversed(det):
+                    if obb:
+                        xywha = d[:5]
+                        conf, cls = d[5], d[6]
+                    else:
+                        xyxy, conf, cls = d[:4], d[4], d[5]
                     if save_txt:  # Write to file
-                        if not widerface:
+                        if obb:
+                            xywha_n = xywha.clone()
+                            xywha_n[0] /= gn[0]
+                            xywha_n[1] /= gn[1]
+                            xywha_n[2] /= gn[2]
+                            xywha_n[3] /= gn[3]
+                            line = (cls, *xywha_n.tolist(), conf) if save_conf else (cls, *xywha_n.tolist())
+                        elif not widerface:
                             xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                             line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                         else:
@@ -240,8 +262,20 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                     if save_img or save_crop or view_img:  # Add bbox to image
                         c = int(cls)  # integer class
                         label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                        annotator.box_label(xyxy, label, color=colors(c, True))
-                        if save_crop:
+                        if obb:
+                            xc, yc, ww, hh, a = [float(v) for v in xywha]
+                            ca, sa = np.cos(a), np.sin(a)
+                            vx = np.array([ww / 2 * ca, ww / 2 * sa], dtype=np.float32)
+                            vy = np.array([-hh / 2 * sa, hh / 2 * ca], dtype=np.float32)
+                            ctr = np.array([xc, yc], dtype=np.float32)
+                            pts = np.array([ctr + vx + vy, ctr + vx - vy, ctr - vx - vy, ctr - vx + vy], dtype=np.int32)
+                            cv2.polylines(im0, [pts.reshape(-1, 1, 2)], True, colors(c, True), line_thickness, cv2.LINE_AA)
+                            if label:
+                                cv2.putText(im0, label, (int(pts[0, 0]), int(pts[0, 1])), 0, line_thickness / 3,
+                                            (255, 255, 255), thickness=max(line_thickness - 1, 1), lineType=cv2.LINE_AA)
+                        else:
+                            annotator.box_label(xyxy, label, color=colors(c, True))
+                        if save_crop and (not obb):
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
 
             # Print time (inference-only)

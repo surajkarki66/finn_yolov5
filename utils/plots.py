@@ -80,6 +80,13 @@ class Annotator:
 
     def box_label(self, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):
         # Add one xyxy box to image with label
+        # Guard against inverted/degenerate boxes from async plotting paths.
+        x0, y0, x1, y1 = box
+        if x1 < x0:
+            x0, x1 = x1, x0
+        if y1 < y0:
+            y0, y1 = y1, y0
+        box = [x0, y0, x1, y1]
         if self.pil or not is_ascii(label):
             self.draw.rectangle(box, width=self.lw, outline=color)  # box
             if label:
@@ -149,8 +156,14 @@ def output_to_target(output):
     # Convert model output to target format [batch_id, class_id, x, y, w, h, conf]
     targets = []
     for i, o in enumerate(output):
-        for *box, conf, cls in o.cpu().numpy():
-            targets.append([i, cls, *list(*xyxy2xywh(np.array(box)[None])), conf])
+        arr = o.cpu().numpy()
+        # OBB path: N x 7 -> [x, y, w, h, angle, conf, cls]
+        if arr.shape[1] == 7:
+            for x, y, w, h, a, conf, cls in arr:
+                targets.append([i, cls, x, y, w, h, a, conf])
+        else:
+            for *box, conf, cls in arr:
+                targets.append([i, cls, *list(*xyxy2xywh(np.array(box)[None])), conf])
     return np.array(targets)
 
 
@@ -192,10 +205,12 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
             annotator.text((x + 5, y + 5 + h), text=Path(paths[i]).name[:40], txt_color=(220, 220, 220))  # filenames
         if len(targets) > 0:
             ti = targets[targets[:, 0] == i]  # image targets
+            is_obb = ti.shape[1] >= 7  # labels: 7 (angle); preds: 8 (angle+conf)
             boxes = xywh2xyxy(ti[:, 2:6]).T
             classes = ti[:, 1].astype('int')
-            labels = ti.shape[1] == 6  # labels if no conf column
-            conf = None if labels else ti[:, 6]  # check for confidence presence (label vs pred)
+            labels = (ti.shape[1] == 6) or (ti.shape[1] == 7)  # labels if no conf column
+            conf = None if labels else ti[:, -1]  # conf is last column for both AABB/OBB preds
+            angles = ti[:, 6] if is_obb else None
 
             if boxes.shape[1]:
                 if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
@@ -211,7 +226,33 @@ def plot_images(images, targets, paths=None, fname='images.jpg', names=None, max
                 cls = names[cls] if names else cls
                 if labels or conf[j] > 0.25:  # 0.25 conf thresh
                     label = f'{cls}' if labels else f'{cls} {conf[j]:.1f}'
-                    annotator.box_label(box, label, color=color)
+                    if is_obb:
+                        # Use already-transformed xyxy box (after normalization/scale/offset) as base,
+                        # then apply YOLOv8-OBB style center/size + angle -> 4 corners conversion.
+                        x0, y0, x1, y1 = map(float, box)
+                        xc, yc = (x0 + x1) * 0.5, (y0 + y1) * 0.5
+                        ww, hh = max(x1 - x0, 1e-6), max(y1 - y0, 1e-6)
+                        a = float(angles[j])
+                        if abs(a) > math.pi * 1.5:  # tolerate degree-form labels
+                            a = a * math.pi / 180.0
+                        ca, sa = math.cos(a), math.sin(a)
+                        vx = np.array([ww / 2 * ca, ww / 2 * sa], dtype=np.float32)
+                        vy = np.array([-hh / 2 * sa, hh / 2 * ca], dtype=np.float32)
+                        ctr = np.array([xc, yc], dtype=np.float32)
+                        pts = [tuple((ctr + vx + vy).tolist()),
+                               tuple((ctr + vx - vy).tolist()),
+                               tuple((ctr - vx - vy).tolist()),
+                               tuple((ctr - vx + vy).tolist())]
+                        if annotator.pil:
+                            annotator.draw.polygon(pts, outline=color, width=annotator.lw)
+                            annotator.draw.text((pts[0][0], pts[0][1]), label, fill=(255, 255, 255), font=annotator.font)
+                        else:
+                            p = np.array(pts, dtype=np.int32).reshape(-1, 1, 2)
+                            cv2.polylines(annotator.im, [p], True, color, annotator.lw, lineType=cv2.LINE_AA)
+                            cv2.putText(annotator.im, label, (int(pts[0][0]), int(pts[0][1])), 0, annotator.lw / 3,
+                                        (255, 255, 255), thickness=max(annotator.lw - 1, 1), lineType=cv2.LINE_AA)
+                    else:
+                        annotator.box_label(box, label, color=color)
     annotator.im.save(fname)  # save
 
 
@@ -303,8 +344,10 @@ def plot_labels(labels, names=(), save_dir=Path('')):
     # plot dataset labels
     print('Plotting labels... ')
     c, b = labels[:, 0], labels[:, 1:].transpose()  # classes, boxes
+    is_obb = b.shape[0] == 5  # xywha
     nc = int(c.max() + 1)  # number of classes
-    x = pd.DataFrame(b.transpose(), columns=['x', 'y', 'width', 'height'])
+    cols = ['x', 'y', 'width', 'height', 'angle'] if is_obb else ['x', 'y', 'width', 'height']
+    x = pd.DataFrame(b.transpose(), columns=cols)
 
     # seaborn correlogram
     sn.pairplot(x, corner=True, diag_kind='auto', kind='hist', diag_kws=dict(bins=50), plot_kws=dict(pmax=0.9))
@@ -313,7 +356,10 @@ def plot_labels(labels, names=(), save_dir=Path('')):
 
     # matplotlib labels
     matplotlib.use('svg')  # faster
-    ax = plt.subplots(2, 2, figsize=(8, 8), tight_layout=True)[1].ravel()
+    if is_obb:
+        ax = plt.subplots(2, 3, figsize=(12, 8), tight_layout=True)[1].ravel()
+    else:
+        ax = plt.subplots(2, 2, figsize=(8, 8), tight_layout=True)[1].ravel()
     y = ax[0].hist(c, bins=np.linspace(0, nc, nc + 1) - 0.5, rwidth=0.8)
     # [y[2].patches[i].set_color([x / 255 for x in colors(i)]) for i in range(nc)]  # update colors bug #3195
     ax[0].set_ylabel('instances')
@@ -324,17 +370,40 @@ def plot_labels(labels, names=(), save_dir=Path('')):
         ax[0].set_xlabel('classes')
     sn.histplot(x, x='x', y='y', ax=ax[2], bins=50, pmax=0.9)
     sn.histplot(x, x='width', y='height', ax=ax[3], bins=50, pmax=0.9)
+    if is_obb:
+        ax[4].hist(x['angle'], bins=50)
+        ax[4].set_title('angle')
+        ax[4].set_xlabel('radians')
 
-    # rectangles
+    # rectangles/polygons preview
+    labels = labels.copy()
     labels[:, 1:3] = 0.5  # center
-    labels[:, 1:] = xywh2xyxy(labels[:, 1:]) * 2000
     img = Image.fromarray(np.ones((2000, 2000, 3), dtype=np.uint8) * 255)
-    for cls, *box in labels[:1000]:
-        ImageDraw.Draw(img).rectangle(box, width=1, outline=colors(cls))  # plot
+    drawer = ImageDraw.Draw(img)
+    if is_obb:
+        xywh = labels[:, 1:5]
+        xywh[:, :2] = 0.5
+        xywh *= 2000
+        angles = labels[:, 5]
+        for i, (cls, x0, y0, w0, h0, a0) in enumerate(zip(labels[:, 0], xywh[:, 0], xywh[:, 1], xywh[:, 2], xywh[:, 3], angles)):
+            if i >= 1000:
+                break
+            ca, sa = math.cos(a0), math.sin(a0)
+            vx = np.array([w0 / 2 * ca, w0 / 2 * sa], dtype=np.float32)
+            vy = np.array([-h0 / 2 * sa, h0 / 2 * ca], dtype=np.float32)
+            ctr = np.array([x0, y0], dtype=np.float32)
+            pts = np.stack([ctr + vx + vy, ctr + vx - vy, ctr - vx - vy, ctr - vx + vy], axis=0)
+            drawer.polygon([tuple(p.tolist()) for p in pts], outline=colors(int(cls)))
+        ax[5].axis('off')
+    else:
+        labels[:, 1:] = xywh2xyxy(labels[:, 1:]) * 2000
+        for cls, *box in labels[:1000]:
+            drawer.rectangle(box, width=1, outline=colors(int(cls)))  # plot
     ax[1].imshow(img)
     ax[1].axis('off')
 
-    for a in [0, 1, 2, 3]:
+    visible_axes = [0, 1, 2, 3] + ([4] if is_obb else [])
+    for a in visible_axes:
         for s in ['top', 'right', 'left', 'bottom']:
             ax[a].spines[s].set_visible(False)
 

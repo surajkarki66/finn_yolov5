@@ -69,6 +69,20 @@ $ python export.py --data widerface.yaml \
                    --nodetect
 ```
 
+### QONNX OBB Inference
+
+For the YOLOv3-tiny OBB QONNX export, use `predict_qonnx_obb.py` to run FINN-style inference and save annotated images.
+
+```bash
+$ python predict_qonnx_obb.py \
+        --model runs/train/exp/weights/exported.qonnx.onnx \
+        --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-obb-quant.yaml \
+        --data hpd2_modified/data.yaml \
+        --source path/to/images \
+        --imgsz 416 \
+        --save
+```
+
 ## Model Zoo
 
 The repository includes various quantized YOLO models optimized for FPGA deployment:

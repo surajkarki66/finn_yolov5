@@ -27,8 +27,10 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 from models.experimental import attempt_load
 from utils.datasets import create_dataloader
 from utils.general import coco80_to_coco91_class, check_dataset, check_img_size, check_requirements, \
-    check_suffix, check_yaml, box_iou, non_max_suppression, scale_coords, xyxy2xywh, xywh2xyxy, set_logging, \
+    check_suffix, check_yaml, box_iou, non_max_suppression, non_max_suppression_obb, scale_coords, \
+    scale_coords_xywh, xyxy2xywh, xywh2xyxy, set_logging, \
     increment_path, colorstr, print_args
+from utils.obb_metrics import batch_probiou
 from utils.metrics import ap_per_class, ConfusionMatrix
 from utils.plots import output_to_target, plot_images, plot_val_study
 from utils.torch_utils import select_device, time_sync
@@ -75,6 +77,24 @@ def process_batch(detections, labels, iouv):
             matches = matches[matches[:, 2].argsort()[::-1]]
             matches = matches[np.unique(matches[:, 1], return_index=True)[1]]
             # matches = matches[matches[:, 2].argsort()[::-1]]
+            matches = matches[np.unique(matches[:, 0], return_index=True)[1]]
+        matches = torch.Tensor(matches).to(iouv.device)
+        correct[matches[:, 1].long()] = matches[:, 2:3] >= iouv
+    return correct
+
+
+def process_batch_obb(detections, labels, iouv):
+    """detections (N,7) xywhr, conf, cls — labels (M,6) cls, xywhr (native pixels)."""
+    correct = torch.zeros(detections.shape[0], iouv.shape[0], dtype=torch.bool, device=iouv.device)
+    if not len(labels) or not len(detections):
+        return correct
+    iou = batch_probiou(detections[:, :5], labels[:, 1:6]).T
+    x = torch.where((iou >= iouv[0]) & (labels[:, 0:1] == detections[:, 6]))
+    if x[0].shape[0]:
+        matches = torch.cat((torch.stack(x, 1), iou[x[0], x[1]][:, None]), 1).cpu().numpy()
+        if x[0].shape[0] > 1:
+            matches = matches[matches[:, 2].argsort()[::-1]]
+            matches = matches[np.unique(matches[:, 1], return_index=True)[1]]
             matches = matches[np.unique(matches[:, 0], return_index=True)[1]]
         matches = torch.Tensor(matches).to(iouv.device)
         correct[matches[:, 1].long()] = matches[:, 2:3] >= iouv
@@ -141,6 +161,7 @@ def run(data,
     model.eval()
     is_coco = isinstance(data.get('val'), str) and data['val'].endswith('coco/val2017.txt')  # COCO dataset
     nc = 1 if single_cls else int(data['nc'])  # number of classes
+    obb = bool(data.get('obb', False))
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
     niou = iouv.numel()
 
@@ -151,7 +172,7 @@ def run(data,
         pad = 0.0 if task == 'speed' else 0.5
         task = task if task in ('train', 'val', 'test') else 'val'  # path to train/val/test images
         dataloader = create_dataloader(data[task], imgsz, batch_size, gs, single_cls, pad=pad, rect=True,
-                                       prefix=colorstr(f'{task}: '))[0]
+                                       prefix=colorstr(f'{task}: '), obb=obb)[0]
 
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
@@ -159,7 +180,7 @@ def run(data,
     class_map = coco80_to_coco91_class() if is_coco else list(range(1000))
     s = ('%20s' + '%11s' * 6) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
     dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    loss = torch.zeros(3, device=device)
+    loss = torch.zeros(4 if obb else 3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
     for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
         t1 = time_sync()
@@ -177,13 +198,17 @@ def run(data,
 
         # Compute loss
         if compute_loss:
-            loss += compute_loss([x.float() for x in train_out], targets)[1]  # box, obj, cls
+            loss += compute_loss([x.float() for x in train_out], targets)[1]
 
         # Run NMS
-        targets[:, 2:] *= torch.Tensor([width, height, width, height]).to(device)  # to pixels
-        lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
+        wh = torch.Tensor([width, height, width, height]).to(device)
+        targets[:, 2:6] *= wh
+        lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []
         t3 = time_sync()
-        out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
+        if obb:
+            out = non_max_suppression_obb(out, conf_thres, iou_thres, agnostic=single_cls)
+        else:
+            out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
         dt[2] += time_sync() - t3
 
         # Statistics per image
@@ -201,21 +226,33 @@ def run(data,
 
             # Predictions
             if single_cls:
-                pred[:, 5] = 0
+                if obb:
+                    pred[:, 6] = 0
+                else:
+                    pred[:, 5] = 0
             predn = pred.clone()
-            scale_coords(img[si].shape[1:], predn[:, :4], shape, shapes[si][1])  # native-space pred
+            if obb:
+                scale_coords_xywh(img[si].shape[1:], predn[:, :4], shape, shapes[si][1])
+            else:
+                scale_coords(img[si].shape[1:], predn[:, :4], shape, shapes[si][1])
 
             # Evaluate
             if nl:
-                tbox = xywh2xyxy(labels[:, 1:5])  # target boxes
-                scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])  # native-space labels
-                labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
-                correct = process_batch(predn, labelsn, iouv)
-                if plots:
+                if obb:
+                    scale_coords_xywh(img[si].shape[1:], labels[:, 1:5], shape, shapes[si][1])
+                    labelsn = labels
+                    correct = process_batch_obb(predn, labelsn, iouv)
+                else:
+                    tbox = xywh2xyxy(labels[:, 1:5])
+                    scale_coords(img[si].shape[1:], tbox, shape, shapes[si][1])
+                    labelsn = torch.cat((labels[:, 0:1], tbox), 1)
+                    correct = process_batch(predn, labelsn, iouv)
+                if plots and not obb:
                     confusion_matrix.process_batch(predn, labelsn)
             else:
                 correct = torch.zeros(pred.shape[0], niou, dtype=torch.bool)
-            stats.append((correct.cpu(), pred[:, 4].cpu(), pred[:, 5].cpu(), tcls))  # (correct, conf, pcls, tcls)
+            conf_i, cls_i = (5, 6) if obb else (4, 5)
+            stats.append((correct.cpu(), pred[:, conf_i].cpu(), pred[:, cls_i].cpu(), tcls))
 
             # Save/log
             if save_txt:
