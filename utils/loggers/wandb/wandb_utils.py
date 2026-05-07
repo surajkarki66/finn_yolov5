@@ -421,6 +421,11 @@ class WandbLogger():
         path (str): local path of the current evaluation image 
         names (dict(int, str)): hash map that maps class ids to labels
         """
+        # Skip table logging for OBB - W&B doesn't support rotated bounding boxes
+        # OBB predictions have 7 values (x, y, w, h, angle, conf, cls) vs 6 for standard (x1, y1, x2, y2, conf, cls)
+        if len(predn) > 0 and len(predn[0]) == 7:
+            return  # OBB mode - skip W&B table logging
+        
         # Ensure names is a proper dict[int, str] for W&B compatibility
         if names is not None and isinstance(names, dict):
             # Convert string keys to int if needed
@@ -463,6 +468,13 @@ class WandbLogger():
 
         if len(self.bbox_media_panel_images) < self.max_imgs_to_log and self.current_epoch > 0:
             if self.current_epoch % self.bbox_interval == 0:
+                # Skip W&B bbox logging for OBB (rotated boxes) - W&B doesn't support rotated bounding boxes
+                # OBB predictions have 7 values (x, y, w, h, angle, conf, cls) vs 6 for standard (x1, y1, x2, y2, conf, cls)
+                if len(pred) > 0 and len(pred[0]) == 7:
+                    # OBB mode - skip bbox logging, just add plain image
+                    self.bbox_media_panel_images.append(wandb.Image(im, caption=path.name))
+                    return
+                
                 # Ensure names is a proper dict[int, str] for W&B compatibility
                 if names is not None and isinstance(names, dict):
                     # Convert string keys to int if needed
