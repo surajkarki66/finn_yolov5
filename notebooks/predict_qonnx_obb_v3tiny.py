@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""Run inference on a FINN/QONNX-exported YOLOv3-tiny OBB model and save annotated images.
-
-Expected export: raw multi-scale DetectOBB outputs from FINN/QONNX.
-The script decodes anchor-based outputs, applies rotated NMS, rescales boxes,
-and draws oriented boxes on the source image(s).
-
-Examples:
-    # Single image inference:
-    python predict_qonnx_obb.py \
-        --model runs/train/exp/weights/exported.qonnx.onnx \
-        --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-obb-quant.yaml \
-        --data hpd2_modified/data.yaml \
-        --source data/image.jpg \
-        --imgsz 416 \
-        --save
-    
-    # Folder inference:
-    python predict_qonnx_obb.py \
-        --model runs/train/exp/weights/exported.qonnx.onnx \
-        --cfg models/hub/v3tiny/conv/4w4a/yolov3n-tiny-obb-quant.yaml \
-        --data hpd2_modified/data.yaml \
-        --source data/images \
-        --imgsz 416 \
-        --save
-"""
 
 from __future__ import annotations
 

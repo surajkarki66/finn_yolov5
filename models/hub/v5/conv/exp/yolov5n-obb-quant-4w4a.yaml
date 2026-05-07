@@ -1,4 +1,4 @@
-# YOLOv5n 🚀 by Ultralytics, GPL-3.0 license
+# YOLOv5n OBB
 
 # Parameters
 nc: 1  # number of classes
@@ -47,5 +47,5 @@ head:
    [[-1, 10], 1, Concat, [1]],  # cat head P5
    [-1, 1, QuantC3, [1024, False, 1, 0.5, weight_bit_width, act_bit_width, use_hardtanh]],  # 23 (P5/32-large)
 
-   [[17, 20, 23], 1, Detect, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # Detect(P3, P4, P5)
+   [[17, 20, 23], 1, DetectOBB, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],  # DetectOBB(P3, P4, P5)
   ]

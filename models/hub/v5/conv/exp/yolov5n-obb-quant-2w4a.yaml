@@ -1,4 +1,4 @@
-# YOLOv5n OBB (QAT) no-skip using DetectOBB head
+# YOLOv5n OBB
 
 # Parameters
 nc: 1  # number of classes
@@ -10,9 +10,9 @@ anchors:
   - [30,61, 62,45, 59,119]  # P4/16
   - [116,90, 156,198, 373,326]  # P5/32
 bit_width:
-- [8, 4, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width
+- [8, 2, 4, 8]  # in_weight_bit_width, weight_bit_width, act_bit_width, out_weight_bit_width (2w4a)
 
-# YOLOv5 v6.0 backbone
+# YOLOv5 v6.0 backbone (no-skip: C3 shortcut=False)
 backbone:
   # [from, number, module, args]
   [[-1, 1, QuantConv, [64, 6, 2, 2, 1, True, True, in_weight_bit_width, act_bit_width]],  # 0-P1/2
@@ -27,7 +27,7 @@ backbone:
    [-1, 1, QuantSPPF, [1024, 5, weight_bit_width, act_bit_width]],  # 9
   ]
 
-# YOLOv5 v6.0 head
+# YOLOv5 v6.0 head (no-skip)
 head:
   [[-1, 1, QuantConv, [512, 1, 1, None, 1, True, True, in_weight_bit_width, act_bit_width]],
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],

@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""Run inference on a FINN/QONNX-exported YOLOv3 OBB model and save annotated images.
-
-Expected export: raw multi-scale DetectOBB outputs from FINN/QONNX.
-The script decodes anchor-based outputs, applies rotated NMS, rescales boxes,
-and draws oriented boxes on the source image(s).
-
-Examples:
-    # Single image inference:
-    python predict_qonnx_obb_v3.py \
-        --model runs/train/exp/weights/exported.qonnx.onnx \
-        --cfg models/hub/v3/conv/4w4a/no-skip/yolov3-obb-quant-no-skip.yaml \
-        --data data/HABOF/data.yaml \
-        --source data/image.jpg \
-        --imgsz 416 \
-        --save
-    
-    # Folder inference:
-    python predict_qonnx_obb_v3.py \
-        --model runs/train/exp/weights/exported.qonnx.onnx \
-        --cfg models/hub/v3/conv/4w4a/no-skip/yolov3-obb-quant-no-skip.yaml \
-        --data data/HABOF/data.yaml \
-        --source data/images \
-        --imgsz 416 \
-        --save
-"""
 
 from __future__ import annotations
 
@@ -116,7 +91,7 @@ def draw_obb(image: np.ndarray, corners: np.ndarray, label: str, color: tuple[in
 
 
 def parse_opt() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="QONNX FINN inference for YOLOv3 OBB")
+    parser = argparse.ArgumentParser(description="QONNX FINN inference for YOLOv5 OBB")
     parser.add_argument("--model", type=str, required=True, help="Exported QONNX .onnx model")
     parser.add_argument("--cfg", type=str, required=True, help="Model YAML used for training/export")
     parser.add_argument("--data", type=str, default="", help="Data YAML for class names")
@@ -283,7 +258,7 @@ def main() -> None:
         save_dir.mkdir(parents=True, exist_ok=True)
 
     # Use tqdm only for multiple files
-    iterator = tqdm(files, desc="QONNX OBB YOLOv3") if len(files) > 1 else files
+    iterator = tqdm(files, desc="QONNX OBB YOLOv5") if len(files) > 1 else files
     
     for image_path in iterator:
         img_in, original_image, original_shape, ratio, pad = preprocess_image(image_path, opt.imgsz)
