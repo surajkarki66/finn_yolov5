@@ -421,7 +421,14 @@ class WandbLogger():
         path (str): local path of the current evaluation image 
         names (dict(int, str)): hash map that maps class ids to labels
         """
-        class_set = wandb.Classes([{'id': id, 'name': name} for id, name in names.items()])
+        # Ensure names is a proper dict[int, str] for W&B compatibility
+        if names is not None and isinstance(names, dict):
+            # Convert string keys to int if needed
+            class_labels = {int(k): v for k, v in names.items()} if names else {}
+        else:
+            class_labels = {0: "object"}  # Fallback for OBB or if names is invalid
+        
+        class_set = wandb.Classes([{'id': id, 'name': name} for id, name in class_labels.items()])
         box_data = []
         total_conf = 0
         for *xyxy, conf, cls in predn.tolist():
@@ -429,11 +436,11 @@ class WandbLogger():
                 box_data.append(
                     {"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2], "maxY": xyxy[3]},
                      "class_id": int(cls),
-                     "box_caption": "%s %.3f" % (names[cls], conf),
+                     "box_caption": "%s %.3f" % (class_labels.get(int(cls), "unknown"), conf),
                      "scores": {"class_score": conf},
                      "domain": "pixel"})
                 total_conf += conf
-        boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
+        boxes = {"predictions": {"box_data": box_data, "class_labels": class_labels}}  # inference-space
         id = self.val_table_path_map[Path(path).name]
         self.result_table.add_data(self.current_epoch,
                                    id,
@@ -456,12 +463,19 @@ class WandbLogger():
 
         if len(self.bbox_media_panel_images) < self.max_imgs_to_log and self.current_epoch > 0:
             if self.current_epoch % self.bbox_interval == 0:
+                # Ensure names is a proper dict[int, str] for W&B compatibility
+                if names is not None and isinstance(names, dict):
+                    # Convert string keys to int if needed
+                    class_labels = {int(k): v for k, v in names.items()} if names else {}
+                else:
+                    class_labels = {0: "object"}  # Fallback for OBB or if names is invalid
+                
                 box_data = [{"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2], "maxY": xyxy[3]},
                              "class_id": int(cls),
-                             "box_caption": "%s %.3f" % (names[cls], conf),
+                             "box_caption": "%s %.3f" % (class_labels.get(int(cls), "unknown"), conf),
                              "scores": {"class_score": conf},
                              "domain": "pixel"} for *xyxy, conf, cls in pred.tolist()]
-                boxes = {"predictions": {"box_data": box_data, "class_labels": names}}  # inference-space
+                boxes = {"predictions": {"box_data": box_data, "class_labels": class_labels}}  # inference-space
                 self.bbox_media_panel_images.append(wandb.Image(im, boxes=boxes, caption=path.name))
 
     def log(self, log_dict):
