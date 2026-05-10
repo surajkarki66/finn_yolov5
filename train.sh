@@ -214,7 +214,7 @@
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 
 # DIOR-R-YOLOv5n
-python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
+#python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 
 # CEPDOF-YOLOv3ntiny
 #python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
@@ -227,3 +227,10 @@ python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v5/conv/exp
 
 # WEPDTOP-YOLOv5n
 #python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
+
+
+# DOTA-YOLOv3n-tiny
+#python3 train.py --data ./data/DOTA/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
+
+# HABOF-YOLOv3ntiny3
+python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-3-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416

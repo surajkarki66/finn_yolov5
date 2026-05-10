@@ -34,9 +34,10 @@ head:
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
    [[-1, 8], 1, Concat, [1]],
    [-1, 1, QuantConv, [256, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
-   [-1, 1, QuantConv, [64, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # scale-down for P3
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
-   [[-1, 4], 1, Concat, [1]],  # concat with backbone layer 4 (Conv 64)
+  [-1, 1, QuantConv, [64, 1, 1, None, 1, True, True, weight_bit_width, act_bit_width]],  # scale-down for P3
+  [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+  [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+  [[-1, 4], 1, Concat, [1]],  # concat with backbone layer 4 (Conv 64)
    [-1, 1, QuantConv, [128, 3, 1, None, 1, True, True, weight_bit_width, act_bit_width]],
 
    [[22, 18, 14], 1, DetectOBB, [nc, anchors, True, use_hardtanh, True, out_weight_bit_width]],
