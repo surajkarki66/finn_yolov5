@@ -203,6 +203,10 @@
 # VOC-YOLOv5
 #python3 train.py --data VOC.yaml --cfg models/hub/v5/conv/exp/yolov5n-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 300 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
+#########################################################
+# OBB Experimental Models
+#########################################################
+
 # HABOF-YOLOv3ntiny
 #python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 #python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w3a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
@@ -228,9 +232,20 @@
 # WEPDTOP-YOLOv5n
 #python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 
-
 # DOTA-YOLOv3n-tiny
 #python3 train.py --data ./data/DOTA/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 
 # HABOF-YOLOv3ntiny3
-python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-3-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-3-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# fisheye8k-YOLOv3ntiny3
+#python3 train.py --data ./data/fisheye8k/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# fisheye8k-YOLOv5n
+#python3 train.py --data ./data/fisheye8k/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a_.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+#########################################################
+# OBB Floating Point Models
+#########################################################
+# HABOF-YOLOv3ntiny
+python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
