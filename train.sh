@@ -208,11 +208,11 @@
 #########################################################
 
 # HABOF-YOLOv3ntiny
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
+#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/train/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w3a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
 
 # HABOF-YOLOv5n
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
+python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights runs/train/exp5/weights/best.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # DIOR-R-YOLOv3ntiny
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch-low.yaml --imgsz 416
@@ -248,4 +248,7 @@
 # OBB Floating Point Models
 #########################################################
 # HABOF-YOLOv3ntiny
-python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# HABOF-YOLOv5n
+#python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
