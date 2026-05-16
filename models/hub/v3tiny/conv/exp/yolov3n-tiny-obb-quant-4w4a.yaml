@@ -1,5 +1,5 @@
 # YOLOv3-tiny with oriented bounding box head
-nc: 1
+nc: 5
 use_hardtanh: False
 depth_multiple: 0.33
 width_multiple: 0.25
