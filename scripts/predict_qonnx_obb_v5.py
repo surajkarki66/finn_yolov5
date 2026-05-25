@@ -196,11 +196,12 @@ def postprocess_outputs(
     for spatial_h, channels, name, arr in ordered:
         print(f"  {name}: shape={arr.shape}, channels={channels}, spatial={spatial_h}x{spatial_h}")
 
-    if len(ordered) < 2:
-        raise ValueError(f"Expected at least 2 feature map outputs; got {len(ordered)}")
+    n_scales = len(anchors)
+    if len(ordered) < n_scales:
+        raise ValueError(f"Expected at least {n_scales} feature map outputs; got {len(ordered)}")
 
     decoded = []
-    for idx, (_, channels, _, value) in enumerate(ordered[: len(anchors)]):
+    for idx, (_, channels, _, value) in enumerate(ordered[:n_scales]):
         stride = input_size / value.shape[2]
         anchor_set = anchors[idx]
         na = len(anchor_set) // 2  # number of anchors for this scale
