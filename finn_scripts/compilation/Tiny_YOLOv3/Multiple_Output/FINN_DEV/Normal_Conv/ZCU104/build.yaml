@@ -1,0 +1,50 @@
+# FINN Dataflow Build Configuration
+
+# ==============================================================================
+# Model Paths
+# ==============================================================================
+model_path: "./best.qonnx.onnx"
+exported_filename: "./best.qonnx_cleanup.onnx"
+
+# ==============================================================================
+# Build Output Configuration
+# ==============================================================================
+output_dir: "./outputs"
+
+# ==============================================================================
+# Target Platform
+# ==============================================================================
+board: "ZCU104"
+# Supported boards:
+# Zynq platforms: ZCU104, ZCU102, Pynq-Z1, Pynq-Z2
+# Alveo platforms: U250, U55C
+
+# ==============================================================================
+# Performance Targets
+# ==============================================================================
+target_fps: 50
+synth_clk_period_ns: 10.0  # Clock period in nanoseconds (10ns = 100MHz)
+
+# ==============================================================================
+# Build Options
+# ==============================================================================
+verbose: true
+standalone_thresholds: true
+auto_fifo_depths: true
+split_large_fifos: true
+
+# ==============================================================================
+# Optional Configuration Files
+# ==============================================================================
+folding_config_file: null  # Path to folding config JSON (or null)
+specialize_layers_config_file: null  # Path to layer specialization config JSON (or null)
+
+# ==============================================================================
+# Output Types to Generate
+# ==============================================================================
+generate_outputs:
+  - "ESTIMATE_REPORTS"
+  - "BITFILE"
+  - "STITCHED_IP"
+  - "PYNQ_DRIVER"
+  - "DEPLOYMENT_PACKAGE"

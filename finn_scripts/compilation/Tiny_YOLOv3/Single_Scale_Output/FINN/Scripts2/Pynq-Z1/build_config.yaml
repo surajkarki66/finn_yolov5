@@ -1,0 +1,61 @@
+# FINN Build Configuration for Tiny YOLOv3
+# Configuration for FPGA deployment pipeline
+
+# Model Information
+model:
+  model_name: "yolov3-tiny-pruned"
+  qonnx_model_path: "models/best.qonnx.onnx"
+
+# Directory Configuration
+directories:
+  build_dir: "build"
+  estimate_output_dir: "build/estimates"
+  deployment_prefix: "deploy"
+
+# Intermediate Model Paths
+intermediate_models:
+  tidy: "model_tidy.onnx"
+  preproc: "model_preproc.onnx"
+  preproc_tidy: "model_preproc_tidy.onnx"
+  streamlined: "model_streamlined.onnx"
+  dataflow_parent: "model_dataflow_parent.onnx"
+  dataflow_model: "model_dataflow.onnx"
+  folded: "model_folded.onnx"
+  bitwidth_minimized: "model_bitwidth_minimized.onnx"  # NEW: Added for minimize_bit_width step
+  synth: "model_synth.onnx"
+
+# Build Steps Control
+build_steps:
+  cleanup: true                # Step 1: Cleanup QONNX model
+  tidy_up: true               # Step 2: Tidy up transformations
+  preprocessing: true          # Step 3: Add preprocessing (ToTensor)
+  streamlining: true          # Step 4: Streamlining transformations
+  convert_to_hw: true         # Step 5: Convert to hardware layers
+  folding: true               # Step 6: Apply folding configuration
+  estimates: true             # Step 7: Generate resource estimates
+  minimize_bit_width: false    # Step 7b: Minimize bit widths
+  synthesis: true            # Step 8: Run synthesis (set to true for actual build)
+  create_deployment: true    # Step 9: Create deployment package
+
+# Preprocessing Configuration
+preprocessing:
+  input_dtype: "UINT8"        # Input data type (UINT8, INT8, FLOAT32, etc.)
+
+# FPGA Configuration
+fpga:
+  board: "Pynq-Z1"            # Target board: Pynq-Z1, Pynq-Z2, ZCU104, Ultra96, etc.
+  target_fps: 15              # Target frames per second for performance estimates
+  synth_clk_period_ns: 10.0   # Synthesis clock period in nanoseconds (10ns = 100MHz)
+  target_clk_ns: 10.0         # Target clock period for ZynqBuild (10ns = 100MHz)
+
+# Deployment Configuration
+deployment:
+  driver_type: "zynq-iodma"      # Driver type: "zynq-iodma" or "zynq-axi"
+  create_archive: true           # Create a zip archive of deployment files
+  archive_name: "pynq_deploy"    # Name of the deployment archive (without extension)
+  include_vivado_project: true  # Include Vivado project in deployment (can be large)
+
+# Visualization Configuration
+visualization:
+  enabled: false              # Enable Netron visualization (set to true to visualize models)
+  netron_default_port: 8081   # Default port for Netron server

@@ -1,0 +1,62 @@
+# Build configuration
+
+# Board settings
+board: ZCU102
+shell_flow_type: vivado_zynq
+
+# Synthesis settings
+synth_clk_period_ns: 10.0
+target_fps: 50
+
+# Output options
+generate_outputs:
+  - estimate_reports
+  - bitfile
+  - pynq_driver
+  - deployment_package
+  
+output_dir: outputs
+
+# Steps to execute
+steps:
+  - custom_steps.step_tidy_up
+  - custom_steps.step_streamline
+  - custom_steps.step_convert_to_hw_layers
+  - step_create_dataflow_partition
+  - step_specialize_layers
+  - step_target_fps_parallelization
+  - step_apply_folding_config
+  - step_minimize_bit_width
+  - step_generate_estimate_reports
+  - step_hw_codegen
+  - step_hw_ipgen
+  - step_set_fifo_depths
+  - step_create_stitched_ip
+  - step_measure_rtlsim_performance
+  - step_out_of_context_synthesis
+  - step_synthesize_bitfile
+  - step_make_driver
+  - step_deployment_package
+
+# Additional configuration fields
+auto_fifo_depths: true
+auto_fifo_strategy: largefifo_rtlsim
+default_swg_exception: true
+enable_instrumentation: false
+fifosim_input_throttle: true
+fifosim_save_waveform: false
+#folding_config_file: None
+folding_two_pass_relaxation: true
+fpga_memory: default
+hls_clk_period_ns: 10.0
+large_fifo_mem_style: auto
+live_fifo_sizing: false
+max_multithreshold_bit_width: 8
+minimize_bit_width: true
+mvau_wwidth_max: 36
+save_intermediate_models: true
+#specialize_layers_config_file: None
+split_large_fifos: true
+standalone_thresholds: false
+verbose: true
+vitis_opt_strategy: '0' # Default
