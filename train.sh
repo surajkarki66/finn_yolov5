@@ -209,6 +209,7 @@
 # HABOF-YOLOv3ntiny
 #python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/train/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-6w6a.yaml --weights ./best_habof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w8a.yaml --weights ./best_habof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # HABOF-YOLOv5n
 #python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights runs/train/exp5/weights/best.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
@@ -221,8 +222,8 @@
 
 # CEPDOF-YOLOv3ntiny
 #python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights ./best_cepdof_yolov3tiny.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-6w6a.yaml --weights ./best_cepdof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
+#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-6w6a.yaml --weights ./best_cepdof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w8a.yaml --weights ./best_cepdof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # CEPDOF-YOLOv5n
 #python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ./best_cepdof_yolov5.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
