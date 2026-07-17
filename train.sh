@@ -206,33 +206,11 @@
 # OBB Experimental Models
 #########################################################
 
-# HABOF-YOLOv3ntiny
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/train/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-#python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-6w6a.yaml --weights ./best_habof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w8a.yaml --weights ./best_habof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# HABOF-YOLOv5n
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights runs/train/exp5/weights/best.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
 # DIOR-R-YOLOv3ntiny
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights ./best_dior_yolov3tiny.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # DIOR-R-YOLOv5n
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ./best_dior_yolov5.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# CEPDOF-YOLOv3ntiny
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights ./best_cepdof_yolov3tiny.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-6w6a.yaml --weights ./best_cepdof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-8w8a.yaml --weights ./best_cepdof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# CEPDOF-YOLOv5n
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ./best_cepdof_yolov5.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# WEPDTOP-YOLOv3ntiny
-#python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights ./best_yolov3n_wepdtof.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# WEPDTOP-YOLOv5n
-#python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ./best_wepdtof_yolov5.pt --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # DOTA-YOLOv3n-tiny
 #python3 train.py --data ./data/DOTA/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights ./best_yolov3n_tiny_dota.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
@@ -250,29 +228,11 @@ python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/
 # OBB Floating Point Models
 #########################################################
 
-# HABOF-YOLOv3ntiny
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# HABOF-YOLOv5n
-#python3 train.py --data ./data/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
 # DIOR-R-YOLOv3ntiny
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # DIOR-R-YOLOv5n
 #python3 train.py --data ./data/YOLODIOR-R/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# CEPDOF-YOLOv3ntiny
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# CEPDOF-YOLOv5n
-#python3 train.py --data ./data/CEPDOF/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# WEPDTOF-YOLOv3ntiny
-#python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-
-# WEPDTOF-YOLOv5n
-#python3 train.py --data ./data/WEPDTOF/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 32 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # fisheye8k-YOLOv3ntiny
 #python3 train.py --data ./data/fisheye8k/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
@@ -285,3 +245,8 @@ python3 train.py --data ./data/HABOF/data.yaml --cfg models/hub/v3tiny/conv/exp/
 
 # Dota-YOLOv5n
 #python3 train.py --data ./data/DOTA/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+# HPD2_modified
+python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --device "cuda:1"
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
