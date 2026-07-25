@@ -224,6 +224,12 @@
 # fisheye8k-YOLOv5n
 #python3 train.py --data ./data/fisheye8k/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ./best_yolov5n_fisheye8k.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
+# HPD2_Modified
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/train/exp/weights/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights runs/train/exp/weights/best.pt  --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+
+
 #########################################################
 # OBB Floating Point Models
 #########################################################
@@ -247,6 +253,6 @@
 #python3 train.py --data ./data/DOTA/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # HPD2_modified
-python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --device "cuda:1"
-#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
