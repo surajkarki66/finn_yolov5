@@ -228,7 +228,7 @@
 #python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/train/exp/weights/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 #python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights runs/train/exp/weights/best.pt  --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
-python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ''  --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
+#python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/conv/exp/yolov5n-obb-quant-4w4a.yaml --weights ''  --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
 
 # PMOF+CEPDOF
 #python3 train.py --data ./data/PMOF+CEPDOF_416/data.yaml --cfg models/hub/v3tiny/conv/exp/yolov3n-tiny-obb-quant-4w4a.yaml --weights runs/yolov3-tiny_float_pmof+cepdof/exp/weights/best.pt --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416
@@ -266,4 +266,6 @@ python3 train.py --data ./data/hpd2_modified_obb/data.yaml --cfg models/hub/v5/c
 #python3 train.py --data ./data/PMOF+CEPDOF_416/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --project runs/yolov3-tiny_float_pmof+cepdof
 #python3 train.py --data ./data/PMOF+CEPDOF_416/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --project runs/yolov5n_float_pmof+cepdof
 
-
+# LOAF
+python3 train.py --data ./data/loaf/data.yaml --cfg models/hub/v3tiny/conv/fp_model/yolov3n-tiny-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --project runs/yolov3-tiny_float_loaf
+#python3 train.py --data ./data/loaf/data.yaml --cfg models/hub/v5/conv/fp_model/no-skip/yolov5n-obb.yaml --weights '' --batch-size 64 --epochs 900 --hyp data/hyps/hyp.scratch.yaml --imgsz 416 --project runs/yolov5n_float_loaf
