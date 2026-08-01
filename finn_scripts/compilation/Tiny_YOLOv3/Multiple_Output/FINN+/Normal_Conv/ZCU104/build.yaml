@@ -6,7 +6,7 @@ shell_flow_type: vivado_zynq
 
 # Synthesis settings
 synth_clk_period_ns: 10.0
-target_fps: 50
+target_fps: 60
 
 # Output options
 generate_outputs:
@@ -15,7 +15,7 @@ generate_outputs:
   - pynq_driver
   - deployment_package
   
-output_dir: outputs
+output_dir: outputs_yolov3-tiny_hpd2
 
 # Steps to execute
 steps:

@@ -19,7 +19,7 @@ generate_outputs:
   - stitched_ip
   - deployment_package
   
-output_dir: outputs_yolov3-tiny_dior
+output_dir: outputs_yolov3-tiny_hpd2
 
 # Steps to execute
 steps:
