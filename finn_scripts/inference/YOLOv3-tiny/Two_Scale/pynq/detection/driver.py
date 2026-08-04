@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_argument('--platform', help='Target platform: zynq-iodma alveo', default="zynq-iodma")
     parser.add_argument('--batchsize', help='number of samples for inference', type=int, default=1)
     parser.add_argument('--device', help='FPGA device to be used', type=int, default=0)
-    parser.add_argument('--bitfile', help='name of bitfile (i.e. "resizer.bit")', default="resizer.bit")
+    parser.add_argument('--bitfile', help='name of bitfile (i.e. "resizer.bit")', default="finn-accel.bit")
     parser.add_argument('--inputfile', help='name(s) of input npy file(s) (i.e. "input.npy")', nargs="*", type=str, default=["input.npy"])
     parser.add_argument('--outputfile', help='name(s) of output npy file(s) (i.e. "output.npy")', nargs="*", type=str, default=["output.npy"])
     parser.add_argument('--runtime_weight_dir', help='path to folder containing runtime-writable .dat weights', default="runtime_weights/")

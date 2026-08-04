@@ -12,9 +12,126 @@ import torch
 import yaml
 from tqdm import tqdm
 
-from utils.augmentations import letterbox
-from utils.general import non_max_suppression_obb, scale_coords_xywh
+def scale_coords_xywh(img1_shape, coords, img0_shape, ratio_pad=None):
+    """Rescale normalized xywh (center) from letterboxed img1_shape to img0_shape (native). coords (N,4+) tensor."""
+    if ratio_pad is None:
+        gain = min(img1_shape[0] / img0_shape[0], img1_shape[1] / img0_shape[1])
+        pad = (img1_shape[1] - img0_shape[1] * gain) / 2, (img1_shape[0] - img0_shape[0] * gain) / 2
+    else:
+        gain = ratio_pad[0][0]
+        pad = ratio_pad[1]
+    coords[:, 0] -= pad[0]
+    coords[:, 1] -= pad[1]
+    coords[:, :4] /= gain
+    coords[:, 0].clamp_(0, img0_shape[1])
+    coords[:, 1].clamp_(0, img0_shape[0])
+    coords[:, 2].clamp_(0, img0_shape[1])
+    coords[:, 3].clamp_(0, img0_shape[0])
+    return coords
 
+def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+    # Resize and pad image while meeting stride-multiple constraints
+    shape = im.shape[:2]  # current shape [height, width]
+    if isinstance(new_shape, int):
+        new_shape = (new_shape, new_shape)
+
+    # Scale ratio (new / old)
+    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    if not scaleup:  # only scale down, do not scale up (for better val mAP)
+        r = min(r, 1.0)
+
+    # Compute padding
+    ratio = r, r  # width, height ratios
+    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
+    if auto:  # minimum rectangle
+        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
+    elif scaleFill:  # stretch
+        dw, dh = 0.0, 0.0
+        new_unpad = (new_shape[1], new_shape[0])
+        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
+
+    dw /= 2  # divide padding into 2 sides
+    dh /= 2
+
+    if shape[::-1] != new_unpad:  # resize
+        im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
+    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    return im, ratio, (dw, dh)
+
+def nms_rotated(boxes, scores, threshold=0.45):
+    """Greedy NMS on xywhr boxes (N,5). Returns indices to keep."""
+    if len(boxes) == 0:
+        return torch.empty((0,), dtype=torch.long, device=boxes.device)
+    sorted_idx = torch.argsort(scores, descending=True)
+    boxes = boxes[sorted_idx]
+    ious = batch_probiou(boxes, boxes).triu_(diagonal=1)
+    pick = torch.nonzero(ious.max(dim=0)[0] < threshold).squeeze_(-1)
+    return sorted_idx[pick]
+
+def _get_covariance_matrix(boxes):
+    gbbs = torch.cat((torch.pow(boxes[:, 2:4], 2) / 12, boxes[:, 4:]), dim=-1)
+    a, b, c = gbbs.split(1, dim=-1)
+    return (
+        a * torch.cos(c) ** 2 + b * torch.sin(c) ** 2,
+        a * torch.sin(c) ** 2 + b * torch.cos(c) ** 2,
+        a * torch.cos(c) * torch.sin(c) - b * torch.sin(c) * torch.cos(c),
+    )
+    
+def batch_probiou(obb1, obb2, eps=1e-7):
+    """Pairwise probiou between obb1 (N,5) and obb2 (M,5) in xywhr format -> (N, M)."""
+    x1, y1 = obb1[..., :2].split(1, dim=-1)
+    x2, y2 = (x.squeeze(-1)[None] for x in obb2[..., :2].split(1, dim=-1))
+    a1, b1, c1 = _get_covariance_matrix(obb1)
+    a2, b2, c2 = (x.squeeze(-1)[None] for x in _get_covariance_matrix(obb2))
+    t1 = (
+        ((a1 + a2) * (torch.pow(y1 - y2, 2)) + (b1 + b2) * (torch.pow(x1 - x2, 2)))
+        / ((a1 + a2) * (b1 + b2) - (torch.pow(c1 + c2, 2)) + eps)
+    ) * 0.25
+    t2 = (((c1 + c2) * (x2 - x1) * (y1 - y2)) / ((a1 + a2) * (b1 + b2) - (torch.pow(c1 + c2, 2)) + eps)) * 0.5
+    t3 = (
+        torch.log(
+            ((a1 + a2) * (b1 + b2) - (torch.pow(c1 + c2, 2)))
+            / (4 * torch.sqrt((a1 * b1 - torch.pow(c1, 2)).clamp_(0) * (a2 * b2 - torch.pow(c2, 2)).clamp_(0)) + eps)
+            + eps
+        )
+        * 0.5
+    )
+    bd = t1 + t2 + t3
+    bd = torch.clamp(bd, eps, 100.0)
+    hd = torch.sqrt(1.0 - torch.exp(-bd) + eps)
+    return 1 - hd
+
+def non_max_suppression_obb(prediction, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic=False,
+                            multi_label=False, max_det=300):
+    """NMS for DetectOBB outputs: (B, n, 6+nc) with x,y,w,h (pixels), angle, obj, cls."""
+
+    bs = prediction.shape[0]
+    xc = prediction[..., 5] > conf_thres
+    output = [torch.zeros((0, 7), device=prediction.device)] * bs
+    for xi, x in enumerate(prediction):
+        x = x[xc[xi]]
+        if not x.shape[0]:
+            continue
+        box, cls = x[:, :5], x[:, 6:]
+        cls = cls * x[:, 5:6]
+        conf, j = cls.max(1, keepdim=True)
+        x = torch.cat((box, conf, j.float()), 1)[conf.view(-1) > conf_thres]
+        if classes is not None:
+            x = x[(x[:, 6:7] == torch.tensor(classes, device=x.device)).any(1)]
+        if not x.shape[0]:
+            continue
+        c = x[:, 6:7] * (0 if agnostic else 7680)
+        boxes = x[:, :5].clone()
+        boxes[:, 0] += c.squeeze(-1)
+        boxes[:, 1] += c.squeeze(-1)
+        scores = x[:, 5]
+        keep = nms_rotated(boxes, scores, iou_thres)
+        keep = keep[:max_det]
+        output[xi] = x[keep]
+    return output
 
 HEX_PALETTE = (
     "FF3838", "FF9D97", "FF701F", "FFB21D", "CFD231", "48F90A", "92CC17", "3DDB86",
