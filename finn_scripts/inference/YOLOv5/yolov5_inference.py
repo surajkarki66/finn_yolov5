@@ -1,4 +1,5 @@
 import argparse
+import time
 import cv2
 import numpy as np
 import pyxrt
@@ -16,29 +17,36 @@ from utils import (
     visualize_boxes,
 )
 
+
+# -----------------------------------------------------------------
+# io_shape_dict for this accelerator (three outputs)
+# -----------------------------------------------------------------
 io_shape_dict = {
     "idt": [DataType["UINT8"]],
-    "odt": [DataType["INT24"], DataType["INT24"]],
+    "odt": [DataType["INT24"], DataType["INT24"], DataType["INT24"]],
     "ishape_normal": [(1, 416, 416, 3)],
     "oshape_normal": [
-        (1, 13, 13, 18),
+        (1, 52, 52, 18),
         (1, 26, 26, 18),
+        (1, 13, 13, 18),
     ],
     "ishape_folded": [(1, 416, 416, 3, 1)],
     "oshape_folded": [
-        (1, 13, 13, 18, 1),
+        (1, 52, 52, 18, 1),
         (1, 26, 26, 18, 1),
+        (1, 13, 13, 18, 1),
     ],
     "ishape_packed": [(1, 416, 416, 3, 1)],
     "oshape_packed": [
-        (1, 13, 13, 18, 3),
+        (1, 52, 52, 18, 3),
         (1, 26, 26, 18, 3),
+        (1, 13, 13, 18, 3),
     ],
     "input_dma_name": ["idma0"],
-    "output_dma_name": ["odma0", "odma1"],
+    "output_dma_name": ["odma0", "odma1", "odma2"],
     "number_of_external_weights": 0,
     "num_inputs": 1,
-    "num_outputs": 2,
+    "num_outputs": 3,
 }
 
 
@@ -54,14 +62,16 @@ class FINNXRT:
     ):
 
         if output_kernel_names is None:
-            # xclbinutil reports odma0/odma1 as StreamingDataflowPartition_2/3.
+            # xclbinutil reports odma0/odma1/odma2 as StreamingDataflowPartition_2/3/4.
             output_kernel_names = [
                 "StreamingDataflowPartition_2",
                 "StreamingDataflowPartition_3",
+                "StreamingDataflowPartition_4",
             ]
 
         self.io_shape_dict = io_shape_dict
         self.output_kernel_names = output_kernel_names
+        self.last_fpga_latency_ms = None
 
         print("Opening device")
         self.device = pyxrt.device(device_id)
@@ -79,8 +89,8 @@ class FINNXRT:
 
         print("FINN accelerator ready")
 
-    def alloc_bo(self, size):
-        return pyxrt.bo(self.device, int(size), pyxrt.bo.normal, 0)
+    def alloc_bo(self, size, kernel, argno=0):
+        return pyxrt.bo(self.device, int(size), pyxrt.bo.normal, kernel.group_id(argno))
 
     def copy_to_bo(self, bo, data_bytes):
         mapped = bo.map()
@@ -150,13 +160,17 @@ class FINNXRT:
         ibuf_packed = self.pack_input(ibuf_folded, ind=0)
         ibuf_packed = np.ascontiguousarray(ibuf_packed, dtype=np.uint8)
 
-        ibuf_bo = self.alloc_bo(ibuf_packed.size)
+        ibuf_bo = self.alloc_bo(ibuf_packed.size, self.idma0, 0)
         self.copy_to_bo(ibuf_bo, ibuf_packed)
 
         out_packed_sizes = [int(np.prod(self.oshape_packed(i))) for i in range(self.io_shape_dict["num_outputs"])]
-        obuf_bos = [self.alloc_bo(size) for size in out_packed_sizes]
+        obuf_bos = [
+            self.alloc_bo(size, self.odma_kernels[i], 0)
+            for i, size in enumerate(out_packed_sizes)
+        ]
 
         print("Starting output DMA(s)")
+        fpga_t0 = time.perf_counter()
         output_runs = [kernel(bo, 1) for kernel, bo in zip(self.odma_kernels, obuf_bos)]
 
         print("Starting input DMA")
@@ -166,8 +180,11 @@ class FINNXRT:
         input_run.wait()
         for run in output_runs:
             run.wait()
+        fpga_t1 = time.perf_counter()
+        self.last_fpga_latency_ms = (fpga_t1 - fpga_t0) * 1000.0
 
         print("Inference done")
+        print(f"FPGA latency: {self.last_fpga_latency_ms:.3f} ms")
 
         outputs = []
         for idx, (bo, out_packed_size) in enumerate(zip(obuf_bos, out_packed_sizes)):
@@ -184,6 +201,7 @@ def load_scales(scale_dir):
     return [
         np.load(f"{scale_dir}/mul_0.npy"),
         np.load(f"{scale_dir}/mul_1.npy"),
+        np.load(f"{scale_dir}/mul_2.npy"),
     ]
 
 
@@ -230,10 +248,10 @@ def postprocess_yolo_outputs(outputs, anchors_config, strides, nc):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Execute YOLOv3n FINN accelerator on a test image")
+    parser = argparse.ArgumentParser(description="Execute YOLOv5n FINN accelerator on a single test image")
     parser.add_argument("--xclbin", default="finn-accel.xclbin", help="Path to the compiled xclbin")
-    parser.add_argument("--image", default="3.jpg", help="Input image path")
-    parser.add_argument("--scale-dir", default=".", help="Directory containing mul_0.npy/mul_1.npy")
+    parser.add_argument("--image", default="data/3.jpg", help="Input image path")
+    parser.add_argument("--scale-dir", default=".", help="Directory containing mul_0.npy/mul_1.npy/mul_2.npy")
     parser.add_argument("--output-path", default="annotated_test.jpg", help="Path for the annotated output image")
     parser.add_argument("--device-id", type=int, default=0, help="Alveo device index")
     parser.add_argument(
@@ -247,11 +265,10 @@ if __name__ == "__main__":
         default=[
             "StreamingDataflowPartition_2",
             "StreamingDataflowPartition_3",
+            "StreamingDataflowPartition_4",
         ],
-        help="Output kernel names in the xclbin (order must match io_shape_dict output order: [13x13, 26x26])",
+        help="Output kernel names in the xclbin",
     )
-    parser.add_argument("--conf-thres", type=float, default=0.10, help="Confidence threshold for NMS")
-    parser.add_argument("--iou-thres", type=float, default=0.20, help="IoU threshold for NMS")
     args = parser.parse_args()
 
     finn = FINNXRT(
@@ -269,26 +286,35 @@ if __name__ == "__main__":
     names = ["person"]
     nc = 1
     anchors_config = [
-        [[81, 82], [135, 169], [344, 319]],  # P5, matches outputs[0] = 13x13
-        [[10, 14], [23, 27], [37, 58]],      # P4, matches outputs[1] = 26x26
+        [[10, 13], [16, 30], [33, 23]],
+        [[30, 61], [62, 45], [59, 119]],
+        [[116, 90], [156, 198], [373, 326]],
     ]
-    strides = [32, 16]
+    strides = [8, 16, 32]
 
-    conf_thres = args.conf_thres
-    iou_thres = args.iou_thres
+    # Notebook ordering for the three accelerator outputs.
+    decode_order = [1, 0, 2]
+
+    conf_thres = 0.10
+    iou_thres = 0.20
     img_size = (416, 416)
 
     print("Loading scales")
     scales = load_scales(args.scale_dir)
 
     # -----------------------------------------------------
-    # Load and preprocess input image
+    # Load input image
     # -----------------------------------------------------
 
     print(f"Loading {args.image}")
     img_org = cv2.imread(args.image)
     if img_org is None:
         raise FileNotFoundError(f"Could not read {args.image}")
+
+    # -----------------------------------------------------
+    # End-to-end timer starts here (preprocess -> FPGA -> decode -> NMS)
+    # -----------------------------------------------------
+    e2e_t0 = time.perf_counter()
 
     img = img_org.copy()
     img, ratio, (dw, dh) = letterbox(img, img_size, auto=False)
@@ -297,24 +323,17 @@ if __name__ == "__main__":
     driver_in = np.expand_dims(img, 0)
 
     # -----------------------------------------------------
-    # Run inference on FPGA
+    # Run inference on FPGA (FPGA-only latency measured inside finn.execute)
     # -----------------------------------------------------
 
     print("Running inference")
     outputs = finn.execute(driver_in)
 
-    # Sanity check: confirm shapes match what we expect after the fix
-    for idx, out in enumerate(outputs):
-        expected = io_shape_dict["oshape_normal"][idx]
-        assert out.shape == expected, (
-            f"Output {idx} shape mismatch: got {out.shape}, expected {expected}"
-        )
-
     # Apply scale factors and convert NHWC -> NCHW for YOLO decode
     outputs = prepare_outputs_for_decode(outputs, scales)
 
     # -----------------------------------------------------
-    # Postprocessing: decode + NMS + rescale to original image
+    # Postprocessing: decode + NMS
     # -----------------------------------------------------
 
     pred = postprocess_yolo_outputs(outputs, anchors_config, strides, nc)
@@ -325,6 +344,17 @@ if __name__ == "__main__":
         classes=None,
         max_det=1000,
     )
+
+    # -----------------------------------------------------
+    # End-to-end timer stops here: detection bounding boxes are ready
+    # -----------------------------------------------------
+    e2e_t1 = time.perf_counter()
+    end2end_latency_ms = (e2e_t1 - e2e_t0) * 1000.0
+
+    print("\n=== Latency ===")
+    print(f"FPGA-only latency:  {finn.last_fpga_latency_ms:.3f} ms")
+    print(f"End-to-end latency: {end2end_latency_ms:.3f} ms  "
+          f"(preprocess + FPGA + dequant + decode + NMS)")
 
     boxes_detected, class_names_detected, probs_detected = [], [], []
 

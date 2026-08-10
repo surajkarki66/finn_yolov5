@@ -1,5 +1,4 @@
 import cv2
-import cpp_detect
 import time
 import numpy as np
 
@@ -57,7 +56,7 @@ def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=False,
 
 
 def xywh2xyxy(x):
-    y = np.empty_like(x)           
+    y = np.empty_like(x)
     y[:, 0] = x[:, 0] - x[:, 2] / 2
     y[:, 1] = x[:, 1] - x[:, 3] / 2
     y[:, 2] = x[:, 0] + x[:, 2] / 2
@@ -81,15 +80,54 @@ def box_iou(boxes1, boxes2):
     return inter / (area1[:, np.newaxis] + area2[np.newaxis, :] - inter)
 
 
-def _nms_cv2(boxes, scores, iou_thres):
+def _nms_python(boxes, scores, iou_thres):
     """
-    Greedy NMS implementation.
+    Pure NumPy greedy NMS implementation (no cpp_detect dependency).
+
+    boxes:  (N,4) array of xyxy boxes (already class-offset if needed)
+    scores: (N,)  array of confidence scores
+    Returns indices (into the original boxes/scores arrays) to keep,
+    ordered by descending score, matching cpp_detect.nms's behavior.
     """
     if boxes.shape[0] == 0:
         return np.empty(0, dtype=np.intp)
 
-    idx = cpp_detect.nms(boxes.astype(np.float32), scores.astype(np.float32), float(iou_thres))
-    return np.array(idx, dtype=np.intp).flatten()
+    boxes = boxes.astype(np.float64)
+    scores = scores.astype(np.float64)
+
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
+
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    order = scores.argsort()[::-1]
+
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+
+        if order.size == 1:
+            break
+
+        rest = order[1:]
+
+        xx1 = np.maximum(x1[i], x1[rest])
+        yy1 = np.maximum(y1[i], y1[rest])
+        xx2 = np.minimum(x2[i], x2[rest])
+        yy2 = np.minimum(y2[i], y2[rest])
+
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+
+        iou = inter / (areas[i] + areas[rest] - inter)
+
+        inds = np.where(iou <= iou_thres)[0]
+        order = rest[inds]
+
+    return np.array(keep, dtype=np.intp)
 
 
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None,
@@ -159,8 +197,8 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         boxes  = x[:, :4] + c
         scores = x[:, 4]
 
-        #  C++ greedy NMS
-        i = _nms_cv2(boxes, scores, iou_thres)
+        # Pure-Python greedy NMS
+        i = _nms_python(boxes, scores, iou_thres)
 
         if i.shape[0] > max_det:
             i = i[:max_det]

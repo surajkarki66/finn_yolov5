@@ -12,7 +12,7 @@ import torch
 from tqdm import tqdm
 
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[1]
+ROOT = FILE.parents[6]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
