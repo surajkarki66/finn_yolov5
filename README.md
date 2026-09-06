@@ -89,7 +89,7 @@ The repository includes various quantized YOLO models optimized for FPGA deploym
 
 - `yolov1-tiny-quant`: Ultra-lightweight YOLOv1 for resource-constrained FPGAs
 - `yolov3-quant`: Quantized YOLOv3 variants
-- `yolov5s-quant`, `yolov5m-quant`, `yolov5l-quant`: Quantized YOLOv5 models of different sizes
+- `yolov5-quant`: Quantized YOLOv5 variants
 
 ## FINN Integration
 
@@ -97,13 +97,9 @@ This project is designed to work seamlessly with [FINN](https://github.com/Xilin
 
 ## Acknowledgments
 
-This project builds upon the work of the original LPYOLO authors:
-- Bestami Günay
-- Sefa Burak Okcu
-- Hasan Sakir Bilge
-
-Original paper: "LPYOLO: Low Precision YOLO for Face Detection on FPGA" (EECSS'22)  
+This project builds upon the work presented in the paper “LPYOLO: Low Precision YOLO for Face Detection on FPGA” (EECSS 2022).
 [quantized-yolov5](https://github.com/sefaburakokcu/quantized-yolov5.git)
+
 ## References
 
 * [quantized-yolov5](https://github.com/sefaburakokcu/quantized-yolov5.git)
