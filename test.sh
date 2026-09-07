@@ -6,4 +6,14 @@
 #python3 val.py --data data/WEPDTOF/data.yaml --weights runs/train/exp4/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/PMOF+CEPDOF_416/data.yaml --weights runs/yolov3-tiny_float_pmof+cepdof/exp/weights/best.pt --imgsz 416 --task test
 #python3 val.py --data data/PMOF+CEPDOF_416/data.yaml --weights runs/yolov5n_float_pmof+cepdof/exp/weights/best.pt --imgsz 416 --task test
-python3 val.py --data data/PMOF+CEPDOF_416/data.yaml --weights runs/train/exp3/weights/best.pt --imgsz 416 --task test
+#python3 val.py --data data/PMOF+CEPDOF_416/data.yaml --weights runs/train/exp3/weights/best.pt --imgsz 416 --task test
+
+#python3 val.py --data data/loaf/data.yaml --weights runs/yolov3-tiny_float_loaf/exp/weights/best.pt --imgsz 416 --task test
+#python3 val.py --data data/loaf/data.yaml --weights runs/yolov5n_float_loaf/exp/weights/best.pt --imgsz 416 --task test
+
+#python3 val.py --data data/loaf/data.yaml --weights runs/train/exp/weights/best.pt --imgsz 416 --task test
+
+#python3 val.py --data data/PMOF+CEPDOF+withHABOF/data.yaml --weights runs/yolov5n_float_pmof+cepdof+habof/exp/weights/best.pt --imgsz 416 --task test
+#python3 val.py --data data/PMOF+CEPDOF+withHABOF/data.yaml --weights runs/yolov3-tiny_float_pmof+cepdof+habof/exp/weights/best.pt --imgsz 416 --task test
+python3 val.py --data data/PMOF+CEPDOF+withHABOF/data.yaml --weights runs/train/exp2/weights/best.pt --imgsz 416 --task test
+

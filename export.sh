@@ -22,6 +22,6 @@
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp3/weights/best.pt --nodetect --model-type yolov5n
 #python3 export.py --data data/hpd2_modified.yaml --weights runs/train/exp4/weights/best.pt --nodetect --model-type yolov5n 
 
-python3 export.py --weights runs/train/weights/best.pt  --nodetect --model-type yolov3-tiny
+python3 export.py --weights runs/train/exp/weights/best.pt  --nodetect --model-type yolov5n
 
 
